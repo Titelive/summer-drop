@@ -39,6 +39,12 @@ struct ContentView: View {
                 BannerView(message: message) { model.banner = nil }
             }
         }
+        .sheet(isPresented: Binding(
+            get: { model.showOnboarding },
+            set: { model.showOnboarding = $0 }
+        )) {
+            OnboardingView(model: model)
+        }
     }
 }
 

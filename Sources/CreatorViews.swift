@@ -12,6 +12,19 @@ enum Creator {
     }
 }
 
+/// Gabarit commun aux deux pastilles : même hauteur, même verre, même typographie.
+private struct PillLabel<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        HStack(spacing: 8) { content }
+            .font(.callout)
+            .padding(.horizontal, 14)
+            .frame(height: 32)
+            .contentShape(Capsule())
+    }
+}
+
 /// Pastille « Créé par [avatar] Titelive » qui mène vers les prestations.
 struct CreatorPill: View {
     @Environment(\.openURL) private var openURL
@@ -20,7 +33,7 @@ struct CreatorPill: View {
         Button {
             openURL(Creator.servicesURL)
         } label: {
-            HStack(spacing: 8) {
+            PillLabel {
                 Text("Créé par")
                     .foregroundStyle(.secondary)
                 Group {
@@ -38,10 +51,6 @@ struct CreatorPill: View {
                 Text(Creator.name)
                     .fontWeight(.semibold)
             }
-            .font(.callout)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 7)
-            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         .glassEffect(Glass.regular.interactive(), in: .capsule)
@@ -57,18 +66,16 @@ struct CoffeeButton: View {
         Button {
             openURL(Creator.coffeeURL)
         } label: {
-            HStack(spacing: 6) {
+            PillLabel {
                 Image(systemName: "cup.and.saucer.fill")
+                    .foregroundStyle(.yellow)
+                    .frame(width: 20, height: 20)
                 Text("Offrir un café")
-                    .fontWeight(.medium)
+                    .fontWeight(.semibold)
             }
-            .font(.callout)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 7)
-            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .glassEffect(Glass.regular.tint(Color.yellow.opacity(0.35)).interactive(), in: .capsule)
+        .glassEffect(Glass.regular.interactive(), in: .capsule)
         .help("Soutenir \(Creator.name) sur Buy Me a Coffee")
     }
 }

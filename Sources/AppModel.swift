@@ -52,6 +52,7 @@ final class AppModel {
 
     var banner: String?
     var stats = TransferStats.load()
+    var showOnboarding = !UserDefaults.standard.bool(forKey: "onboardingDone")
 
     private var commandRunning = false
     private var pollTask: Task<Void, Never>?

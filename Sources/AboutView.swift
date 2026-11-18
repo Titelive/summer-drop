@@ -1,39 +1,52 @@
 import AppKit
 import SwiftUI
 
-/// Fenêtre « À propos » avec les crédits.
+/// Fenêtre « À propos » avec les crédits (aussi utilisée dans l'onglet Crédits des réglages).
 struct AboutView: View {
     let updater: Updater
 
-    var body: some View {
-        VStack(spacing: 14) {
-            Image(nsImage: NSApp.applicationIconImage)
-                .resizable()
-                .frame(width: 96, height: 96)
+    private let credits: [(role: String, name: String)] = [
+        ("Idée et conception", "Titelive"),
+        ("Développement", "Titelive, avec Claude (Anthropic)"),
+        ("SummerCart64 et sc64deployer", "Mateusz Faderewski (Polprzewodnikowy)"),
+        ("Console", "Analogue 3D, par Analogue"),
+    ]
 
-            VStack(spacing: 2) {
+    var body: some View {
+        VStack(spacing: 18) {
+            VStack(spacing: 8) {
+                Image(nsImage: NSApp.applicationIconImage)
+                    .resizable()
+                    .frame(width: 72, height: 72)
                 Text("Summer Drop")
-                    .font(.title.weight(.bold))
+                    .font(.title2.weight(.bold))
                 Text("Version \(updater.currentVersion)")
                     .font(.callout)
                     .foregroundStyle(.secondary)
+                Text("Envoyez et récupérez vos ROM N64 sur la SummerCart64.")
+                    .font(.callout)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-
-            Text("Envoyez et récupérez vos ROM N64 sur la SummerCart64, par USB-C.")
-                .font(.callout)
-                .multilineTextAlignment(.center)
-
-            Divider()
 
             CreatorBar()
 
-            VStack(alignment: .leading, spacing: 10) {
-                credit("Idée et conception", "Titelive")
-                credit("Développement", "Titelive, avec Claude (Anthropic)")
-                credit("SummerCart64 et sc64deployer", "Mateusz Faderewski (Polprzewodnikowy)")
-                credit("Console", "Analogue 3D, par Analogue")
+            Divider()
+                .frame(maxWidth: 360)
+
+            Grid(horizontalSpacing: 28, verticalSpacing: 14) {
+                GridRow {
+                    credit(credits[0])
+                    credit(credits[1])
+                }
+                GridRow {
+                    credit(credits[2])
+                    credit(credits[3])
+                }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Divider()
+                .frame(maxWidth: 360)
 
             HStack(spacing: 10) {
                 Link("Summer Drop sur GitHub", destination: URL(string: "https://github.com/Titelive/summer-drop")!)
@@ -51,18 +64,22 @@ struct AboutView: View {
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }
-        .padding(28)
-        .frame(width: 420)
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 28)
+        .padding(.vertical, 24)
     }
 
-    private func credit(_ role: String, _ name: String) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text(role)
+    private func credit(_ item: (role: String, name: String)) -> some View {
+        VStack(spacing: 2) {
+            Text(item.role)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Text(name)
+            Text(item.name)
                 .font(.callout.weight(.medium))
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(width: 220)
     }
 }
 

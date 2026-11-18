@@ -42,6 +42,11 @@ struct SummerDropApp: App {
             CommandGroup(replacing: .appInfo) {
                 AppMenuCommands()
             }
+            CommandGroup(replacing: .help) {
+                Button("Revoir le tutoriel") { model.showOnboarding = true }
+                Divider()
+                Link("Summer Drop sur GitHub", destination: URL(string: "https://github.com/Titelive/summer-drop")!)
+            }
         }
 
         Window("À propos de Summer Drop", id: "about") {

@@ -42,18 +42,23 @@ struct SettingsView: View {
         TabView {
             Tab("Général", systemImage: "gearshape") {
                 GeneralSettings(model: model)
+                    .frame(width: 560, height: 380)
             }
             Tab("Cartouche", systemImage: "sdcard") {
                 CartridgeSettings(model: model)
+                    .frame(width: 560, height: 380)
             }
             Tab("Mises à jour", systemImage: "arrow.triangle.2.circlepath") {
                 UpdateSettings(updater: updater)
+                    .frame(width: 560, height: 380)
             }
             Tab("Crédits", systemImage: "heart") {
-                ScrollView { AboutView(updater: updater).frame(maxWidth: .infinity) }
+                // Hauteur naturelle : la fenêtre s'adapte, rien ne passe sous la barre d'onglets.
+                AboutView(updater: updater)
+                    .frame(width: 560)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .frame(width: 560, height: 420)
     }
 }
 
@@ -77,6 +82,15 @@ struct GeneralSettings: View {
                 Text("« Automatique » suit le réglage de macOS.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+
+            Section("Aide") {
+                HStack {
+                    Text("Présentation de l'app et localisation de sc64deployer.")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Revoir le tutoriel") { model.showOnboarding = true }
+                }
             }
 
             Section("Statistiques") {
