@@ -25,6 +25,8 @@ struct AboutView: View {
 
             Divider()
 
+            CreatorBar()
+
             VStack(alignment: .leading, spacing: 10) {
                 credit("Idée et conception", "Titelive")
                 credit("Développement", "Titelive, avec Claude (Anthropic)")

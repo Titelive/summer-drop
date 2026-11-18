@@ -45,6 +45,11 @@ if [ -n "${VERSION:-}" ]; then
     echo "✓ Version $VERSION"
 fi
 
+# Ressources (photo de profil, etc.)
+if [ -d Resources ]; then
+    cp -R Resources/. "$APP/Contents/Resources/"
+fi
+
 # Icône (facultative) : placez un AppIcon.icns à côté de ce script.
 if [ -f AppIcon.icns ]; then
     cp AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"

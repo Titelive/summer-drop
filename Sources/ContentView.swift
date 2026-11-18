@@ -27,6 +27,11 @@ struct ContentView: View {
                         SDCardView(model: model)
                     }
                 }
+
+                HStack {
+                    Spacer()
+                    CreatorBar()
+                }
             }
             .padding(20)
 
