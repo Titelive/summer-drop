@@ -31,6 +31,8 @@ Le dépôt doit être **public** pour que l'app puisse lire les versions sans id
 
 ### Publier une nouvelle version
 
+Sur GitHub : onglet **Actions** → **Compiler et publier** → **Run workflow**, tapez le numéro (par exemple `1.1.0`) et validez. Ou bien, en ligne de commande :
+
 ```bash
 git tag v1.1.0
 git push origin v1.1.0

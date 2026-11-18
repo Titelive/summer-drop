@@ -6,6 +6,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Numéro de la version à publier (ex. 1.1.0). Laisser vide pour une simple compilation."
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -38,8 +43,12 @@ jobs:
       - name: Version
         id: version
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+          if [[ -n "${{ inputs.version }}" ]]; then
+            echo "value=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
           else
             echo "value=0.0.0-dev" >> "$GITHUB_OUTPUT"
           fi
@@ -54,10 +63,11 @@ jobs:
           path: build/SummerDrop.dmg
 
       - name: Publier la version
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.version.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" build/SummerDrop.dmg \
+          gh release create "v${{ steps.version.outputs.value }}" build/SummerDrop.dmg \
+            --target "$GITHUB_SHA" \
             --title "Summer Drop ${{ steps.version.outputs.value }}" \
             --generate-notes
