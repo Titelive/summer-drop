@@ -14,6 +14,8 @@ struct SDEntry: Identifiable, Hashable, Sendable {
     let isDirectory: Bool
     let sizeText: String
     let date: String
+    /// Taille approximative en octets (sc64deployer n'affiche qu'une taille arrondie).
+    var approxBytes: Int64 = 0
 
     var isROM: Bool {
         let ext = (name as NSString).pathExtension.lowercased()
@@ -133,9 +135,23 @@ enum Deployer {
             if name.isEmpty { continue }
             let date = meta.count >= 4 ? "\(meta[2]) \(meta[3])" : ""
             let size = isDirectory ? "" : frenchSize(String(meta[1]))
-            entries.append(SDEntry(name: name, isDirectory: isDirectory, sizeText: size, date: date))
+            let bytes = isDirectory ? 0 : approximateBytes(String(meta[1]))
+            entries.append(SDEntry(name: name, isDirectory: isDirectory, sizeText: size, date: date, approxBytes: bytes))
         }
         return entries
+    }
+
+    private static func approximateBytes(_ text: String) -> Int64 {
+        guard let unit = text.last, let value = Double(text.dropLast()) else { return 0 }
+        let multiplier: Double
+        switch unit {
+        case "K": multiplier = 1024
+        case "M": multiplier = 1024 * 1024
+        case "G": multiplier = 1024 * 1024 * 1024
+        case "T": multiplier = 1024 * 1024 * 1024 * 1024
+        default: multiplier = 1
+        }
+        return Int64(value * multiplier)
     }
 
     private static func frenchSize(_ text: String) -> String {

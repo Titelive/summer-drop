@@ -40,19 +40,33 @@ struct ContentView: View {
 // MARK: - Fond
 
 struct SummerBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var colors: [Color] {
+        if colorScheme == .dark {
+            // Nuit d'été : crépuscule violet et bleu profond.
+            return [
+                Color(red: 0.36, green: 0.16, blue: 0.32),
+                Color(red: 0.20, green: 0.13, blue: 0.36),
+                Color(red: 0.06, green: 0.08, blue: 0.22),
+            ]
+        }
+        return [
+            Color(red: 1.00, green: 0.62, blue: 0.30),
+            Color(red: 0.96, green: 0.36, blue: 0.52),
+            Color(red: 0.45, green: 0.32, blue: 0.85),
+        ]
+    }
+
     var body: some View {
         LinearGradient(
-            colors: [
-                Color(red: 1.00, green: 0.62, blue: 0.30),
-                Color(red: 0.96, green: 0.36, blue: 0.52),
-                Color(red: 0.45, green: 0.32, blue: 0.85),
-            ],
+            colors: colors,
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
         .overlay(
             RadialGradient(
-                colors: [Color.yellow.opacity(0.45), .clear],
+                colors: [Color.yellow.opacity(colorScheme == .dark ? 0.12 : 0.45), .clear],
                 center: .topTrailing,
                 startRadius: 10,
                 endRadius: 520
@@ -67,6 +81,7 @@ struct SummerBackground: View {
 struct HeaderBar: View {
     let model: AppModel
     let updater: Updater
+    @State private var showStats = false
 
     var body: some View {
         GlassEffectContainer(spacing: 12) {
@@ -90,6 +105,19 @@ struct HeaderBar: View {
                 Spacer()
 
                 UpdatePill(updater: updater, isUploading: model.isUploading)
+
+                Button {
+                    showStats.toggle()
+                } label: {
+                    Image(systemName: "chart.bar.xaxis")
+                        .font(.title3)
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.glass)
+                .help("Statistiques")
+                .popover(isPresented: $showStats, arrowEdge: .bottom) {
+                    StatsView(model: model)
+                }
 
                 ConnectionPill(state: model.connection)
             }
@@ -270,9 +298,19 @@ struct UploadQueueView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Envois")
+                Text("Transferts")
                     .font(.headline)
                 Spacer()
+                if model.hasCompletedDownloads {
+                    Button {
+                        model.revealDownloads()
+                    } label: {
+                        Image(systemName: "folder")
+                    }
+                    .buttonStyle(.glass)
+                    .controlSize(.small)
+                    .help("Afficher les fichiers téléchargés dans le Finder")
+                }
                 if !model.queue.isEmpty && !model.isUploading {
                     Button("Effacer") { model.clearFinished() }
                         .buttonStyle(.glass)
@@ -281,7 +319,7 @@ struct UploadQueueView: View {
             }
 
             if model.queue.isEmpty {
-                Text("Aucun envoi pour l'instant.")
+                Text("Aucun transfert pour l'instant.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -326,14 +364,16 @@ struct UploadRow: View {
                     .truncationMode(.middle)
                 switch item.state {
                 case .waiting:
-                    Text("En attente · \(sizeText)")
+                    Text("\(item.kind == .upload ? "Envoi" : "Téléchargement") en attente · \(sizeText)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 case .uploading:
                     ProgressView(value: fileProgress)
                         .tint(.yellow)
                 case .done:
-                    Text("Envoyé vers \(item.destination)")
+                    Text(item.kind == .upload
+                         ? "Envoyé vers \(item.destination)"
+                         : "Téléchargé dans \((item.destination as NSString).deletingLastPathComponent)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 case .failed(let message):
@@ -357,7 +397,7 @@ struct UploadRow: View {
     private var icon: some View {
         switch item.state {
         case .waiting:
-            Image(systemName: "clock")
+            Image(systemName: item.kind == .upload ? "arrow.up.circle" : "arrow.down.circle")
                 .foregroundStyle(.secondary)
         case .uploading:
             ProgressView()
@@ -376,6 +416,14 @@ struct UploadRow: View {
 
 struct SDCardView: View {
     let model: AppModel
+    @State private var showFolderPicker = false
+    @State private var pendingDownload: [SDEntry] = []
+
+    private func askDownload(_ files: [SDEntry]) {
+        guard !files.isEmpty else { return }
+        pendingDownload = files
+        showFolderPicker = true
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -387,6 +435,16 @@ struct SDCardView: View {
                 Spacer()
                 GlassEffectContainer(spacing: 8) {
                     HStack(spacing: 8) {
+                        if !model.selectedFiles.isEmpty {
+                            Button {
+                                askDownload(model.selectedFiles)
+                            } label: {
+                                Label("Télécharger (\(model.selectedFiles.count))", systemImage: "arrow.down.to.line")
+                            }
+                            .buttonStyle(.glassProminent)
+                            .help("Copier les fichiers sélectionnés sur le Mac")
+                        }
+
                         Button {
                             model.goUp()
                         } label: {
@@ -399,7 +457,17 @@ struct SDCardView: View {
                         Button {
                             Task { await model.refreshList() }
                         } label: {
-                            Image(systemName: "arrow.clockwise")
+                            // La roue de chargement remplace l'icône, à sa place exacte.
+                            ZStack {
+                                Image(systemName: "arrow.clockwise")
+                                    .opacity(model.isLoadingList ? 0 : 1)
+                                if model.isLoadingList {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                        .scaleEffect(0.7)
+                                }
+                            }
+                            .frame(width: 16, height: 16)
                         }
                         .buttonStyle(.glass)
                         .disabled(!model.isConnected || model.isLoadingList || model.isUploading)
@@ -408,9 +476,17 @@ struct SDCardView: View {
                 }
             }
 
-            Text(model.currentPath)
-                .font(.callout.monospaced())
-                .foregroundStyle(.secondary)
+            HStack {
+                Text(model.currentPath)
+                    .font(.callout.monospaced())
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if model.isConnected && model.listError == nil && !model.entries.isEmpty {
+                    Text("Clic : sélectionner · double-clic : ouvrir un dossier")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+            }
 
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -418,6 +494,14 @@ struct SDCardView: View {
         .padding(18)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .glassEffect(.regular, in: .rect(cornerRadius: 24))
+        .fileImporter(isPresented: $showFolderPicker, allowedContentTypes: [.folder], allowsMultipleSelection: false) { result in
+            if case .success(let urls) = result, let folder = urls.first {
+                model.download(pendingDownload, to: folder)
+            }
+            pendingDownload = []
+        }
+        .fileDialogDefaultDirectory(model.suggestedDownloadFolder)
+        .fileDialogConfirmationLabel("Télécharger ici")
     }
 
     @ViewBuilder
@@ -438,15 +522,21 @@ struct SDCardView: View {
             ScrollView {
                 LazyVStack(spacing: 4) {
                     ForEach(model.entries) { entry in
-                        SDEntryRow(entry: entry)
+                        SDEntryRow(entry: entry, isSelected: model.selection.contains(entry.name))
                             .contentShape(Rectangle())
                             .onTapGesture(count: 2) { model.open(entry) }
+                            .onTapGesture(count: 1) { model.toggleSelection(entry) }
+                            .contextMenu {
+                                if entry.isDirectory {
+                                    Button("Ouvrir") { model.open(entry) }
+                                } else {
+                                    Button("Télécharger sur le Mac…") {
+                                        let selected = model.selectedFiles
+                                        askDownload(selected.contains(entry) ? selected : [entry])
+                                    }
+                                }
+                            }
                     }
-                }
-            }
-            .overlay(alignment: .topTrailing) {
-                if model.isLoadingList {
-                    ProgressView().controlSize(.small).padding(6)
                 }
             }
         }
@@ -470,6 +560,7 @@ struct SDCardView: View {
 
 struct SDEntryRow: View {
     let entry: SDEntry
+    var isSelected = false
 
     var body: some View {
         HStack(spacing: 10) {
@@ -491,8 +582,15 @@ struct SDEntryRow: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
-        .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
-        .help(entry.isDirectory ? "Double-cliquez pour ouvrir" : entry.name)
+        .background(
+            isSelected ? Color.accentColor.opacity(0.35) : Color.white.opacity(0.06),
+            in: RoundedRectangle(cornerRadius: 10)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(Color.white.opacity(isSelected ? 0.6 : 0), lineWidth: 1)
+        )
+        .help(entry.isDirectory ? "Double-cliquez pour ouvrir" : "Cliquez pour sélectionner, clic droit pour télécharger")
     }
 
     private var iconName: String {

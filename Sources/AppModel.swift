@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Observation
 
@@ -9,6 +10,11 @@ enum ConnectionState: Equatable {
 }
 
 struct UploadItem: Identifiable, Equatable {
+    enum Kind: Equatable {
+        case upload    // Mac -> carte SD
+        case download  // carte SD -> Mac
+    }
+
     enum State: Equatable {
         case waiting
         case uploading
@@ -17,12 +23,15 @@ struct UploadItem: Identifiable, Equatable {
     }
 
     let id = UUID()
-    let url: URL
-    let size: Int64
+    let kind: Kind
+    /// Chemin local (envoi) ou chemin sur la carte SD (téléchargement).
+    let source: String
+    /// Chemin sur la carte SD (envoi) ou chemin local (téléchargement).
     let destination: String
+    let size: Int64
     var state: State = .waiting
 
-    var name: String { url.lastPathComponent }
+    var name: String { (source as NSString).lastPathComponent }
 }
 
 @MainActor
@@ -37,20 +46,27 @@ final class AppModel {
     var listError: String?
 
     var queue: [UploadItem] = []
+    var selection: Set<String> = []
     var isUploading = false
     var currentFileProgress: Double = 0
 
     var banner: String?
+    var stats = TransferStats.load()
 
     private var commandRunning = false
     private var pollTask: Task<Void, Never>?
     private var bytesPerSecond: Double
+    private var downloadBytesPerSecond: Double
 
     private static let speedKey = "measuredBytesPerSecond"
+    private static let downloadSpeedKey = "measuredDownloadBytesPerSecond"
+    static let lastDownloadFolderKey = "lastDownloadFolder"
 
     init() {
         let saved = UserDefaults.standard.double(forKey: Self.speedKey)
         bytesPerSecond = saved > 0 ? saved : 1_500_000
+        let savedDownload = UserDefaults.standard.double(forKey: Self.downloadSpeedKey)
+        downloadBytesPerSecond = savedDownload > 0 ? savedDownload : 2_000_000
         deployerURL = Deployer.locate()
         if deployerURL == nil { connection = .missingTool }
     }
@@ -103,6 +119,18 @@ final class AppModel {
         Task { await refreshConnection() }
     }
 
+    func resetDeployer() {
+        UserDefaults.standard.removeObject(forKey: Deployer.customPathKey)
+        deployerURL = Deployer.locate()
+        connection = deployerURL == nil ? .missingTool : .searching
+        Task { await refreshConnection() }
+    }
+
+    func resetStats() {
+        stats = TransferStats()
+        stats.save()
+    }
+
     var isConnected: Bool {
         if case .connected = connection { return true }
         return false
@@ -118,6 +146,7 @@ final class AppModel {
         isLoadingList = false
         commandRunning = false
 
+        selection = selection.filter { name in Deployer.parseEntries(result.output).contains { $0.name == name } }
         if result.succeeded && !Deployer.consoleWasOn(result.output) {
             listError = nil
             entries = Deployer.parseEntries(result.output)
@@ -135,6 +164,7 @@ final class AppModel {
     func open(_ entry: SDEntry) {
         guard entry.isDirectory, !isLoadingList else { return }
         currentPath = Self.join(currentPath, entry.name)
+        selection = []
         Task { await refreshList() }
     }
 
@@ -142,6 +172,7 @@ final class AppModel {
         guard currentPath != "/", !isLoadingList else { return }
         let parent = (currentPath as NSString).deletingLastPathComponent
         currentPath = parent.isEmpty ? "/" : parent
+        selection = []
         Task { await refreshList() }
     }
 
@@ -160,17 +191,89 @@ final class AppModel {
             let attributes = try? fm.attributesOfItem(atPath: url.path)
             let size = (attributes?[.size] as? NSNumber)?.int64Value ?? 0
             let destination = Self.join(currentPath, url.lastPathComponent)
-            queue.append(UploadItem(url: url, size: size, destination: destination))
+            queue.append(UploadItem(kind: .upload, source: url.path, destination: destination, size: size))
             added += 1
         }
         if added == 0 {
             banner = "Déposez des fichiers (les dossiers ne sont pas pris en charge)."
             return
         }
+        startQueueIfNeeded()
+    }
+
+    private func startQueueIfNeeded() {
         if !isUploading {
             isUploading = true
             Task { await processQueue() }
         }
+    }
+
+    // MARK: - Téléchargement (carte SD -> Mac)
+
+    func toggleSelection(_ entry: SDEntry) {
+        guard !entry.isDirectory else { return }
+        if selection.contains(entry.name) {
+            selection.remove(entry.name)
+        } else {
+            selection.insert(entry.name)
+        }
+    }
+
+    var selectedFiles: [SDEntry] {
+        entries.filter { !$0.isDirectory && selection.contains($0.name) }
+    }
+
+    /// Dossier proposé par défaut : le dernier utilisé, sinon « Jeux/Nintendo 64 » sur iCloud.
+    var suggestedDownloadFolder: URL? {
+        let fm = FileManager.default
+        if let last = UserDefaults.standard.string(forKey: Self.lastDownloadFolderKey),
+           fm.fileExists(atPath: last) {
+            return URL(fileURLWithPath: last)
+        }
+        let nintendo = URL(fileURLWithPath: NSHomeDirectory())
+            .appendingPathComponent("Library/Mobile Documents/com~apple~CloudDocs/Documents/Jeux/Nintendo 64")
+        if fm.fileExists(atPath: nintendo.path) { return nintendo }
+        return fm.urls(for: .downloadsDirectory, in: .userDomainMask).first
+    }
+
+    func download(_ files: [SDEntry], to folder: URL) {
+        let fm = FileManager.default
+        UserDefaults.standard.set(folder.path, forKey: Self.lastDownloadFolderKey)
+        var reserved = Set<String>()
+        for entry in files where !entry.isDirectory {
+            let source = Self.join(currentPath, entry.name)
+            let target = Self.uniqueURL(for: entry.name, in: folder, reserved: reserved, fileManager: fm)
+            reserved.insert(target.path)
+            queue.append(UploadItem(kind: .download, source: source, destination: target.path, size: entry.approxBytes))
+        }
+        selection = []
+        startQueueIfNeeded()
+    }
+
+    /// Évite d'écraser un fichier du Mac : « Mario.z64 » devient « Mario (2).z64 ».
+    private static func uniqueURL(for name: String, in folder: URL, reserved: Set<String>, fileManager: FileManager) -> URL {
+        var candidate = folder.appendingPathComponent(name)
+        let base = (name as NSString).deletingPathExtension
+        let ext = (name as NSString).pathExtension
+        var counter = 2
+        while fileManager.fileExists(atPath: candidate.path) || reserved.contains(candidate.path) {
+            let numbered = ext.isEmpty ? "\(base) (\(counter))" : "\(base) (\(counter)).\(ext)"
+            candidate = folder.appendingPathComponent(numbered)
+            counter += 1
+        }
+        return candidate
+    }
+
+    func revealDownloads() {
+        let urls = queue
+            .filter { $0.kind == .download && $0.state == .done }
+            .map { URL(fileURLWithPath: $0.destination) }
+        guard !urls.isEmpty else { return }
+        NSWorkspace.shared.activateFileViewerSelecting(urls)
+    }
+
+    var hasCompletedDownloads: Bool {
+        queue.contains { $0.kind == .download && $0.state == .done }
     }
 
     func clearFinished() {
@@ -216,7 +319,8 @@ final class AppModel {
             // sc64deployer n'affiche pas de pourcentage : on estime la progression
             // à partir de la taille du fichier et du débit mesuré lors des envois précédents.
             let start = Date()
-            let expected = max(Double(item.size) / bytesPerSecond, 0.5)
+            let speed = item.kind == .upload ? bytesPerSecond : downloadBytesPerSecond
+            let expected = max(Double(item.size) / speed, 0.5)
             let ticker = Task { [weak self] in
                 while !Task.isCancelled {
                     let elapsed = Date().timeIntervalSince(start)
@@ -225,7 +329,12 @@ final class AppModel {
                 }
             }
 
-            let result = await Deployer.run(tool, ["sd", "upload", item.url.path, item.destination])
+            let arguments: [String]
+            switch item.kind {
+            case .upload: arguments = ["sd", "upload", item.source, item.destination]
+            case .download: arguments = ["sd", "download", item.source, item.destination]
+            }
+            let result = await Deployer.run(tool, arguments)
             ticker.cancel()
             let elapsed = Date().timeIntervalSince(start)
 
@@ -234,14 +343,40 @@ final class AppModel {
             if result.succeeded && !Deployer.consoleWasOn(result.output) {
                 currentFileProgress = 1
                 queue[current].state = .done
+                switch item.kind {
+                case .upload:
+                    stats.uploads += 1
+                    stats.bytesUp += item.size
+                    stats.secondsUp += elapsed
+                case .download:
+                    let attributes = try? FileManager.default.attributesOfItem(atPath: item.destination)
+                    let realSize = (attributes?[.size] as? NSNumber)?.int64Value
+                    stats.downloads += 1
+                    stats.bytesDown += realSize ?? item.size
+                    stats.secondsDown += elapsed
+                }
+                stats.lastTransfer = Date()
+                stats.save()
                 if item.size > 2_000_000, elapsed > 0.5 {
                     let measured = Double(item.size) / elapsed
-                    bytesPerSecond = bytesPerSecond * 0.3 + measured * 0.7
-                    UserDefaults.standard.set(bytesPerSecond, forKey: Self.speedKey)
+                    switch item.kind {
+                    case .upload:
+                        bytesPerSecond = bytesPerSecond * 0.3 + measured * 0.7
+                        UserDefaults.standard.set(bytesPerSecond, forKey: Self.speedKey)
+                    case .download:
+                        downloadBytesPerSecond = downloadBytesPerSecond * 0.3 + measured * 0.7
+                        UserDefaults.standard.set(downloadBytesPerSecond, forKey: Self.downloadSpeedKey)
+                    }
                 }
             } else {
                 let message = Deployer.friendlyError(result.output)
                 queue[current].state = .failed(message)
+                stats.failures += 1
+                stats.save()
+                if item.kind == .download {
+                    // Ne pas laisser de fichier incomplet sur le Mac.
+                    try? FileManager.default.removeItem(atPath: item.destination)
+                }
                 if Deployer.consoleWasOn(result.output) {
                     // Inutile d'insister : on arrête la file.
                     for i in queue.indices where queue[i].state == .waiting {

@@ -2,6 +2,12 @@ import AppKit
 import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        MainActor.assumeIsolated {
+            AppearanceMode.current.apply()
+        }
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -28,12 +34,20 @@ struct SummerDropApp: App {
         }
         .defaultSize(width: 1040, height: 680)
         .windowResizability(.contentMinSize)
+
+        Settings {
+            SettingsView(model: model, updater: updater)
+        }
         .commands {
-            CommandGroup(after: .appInfo) {
-                Button("Rechercher des mises à jour…") {
-                    Task { await Updater.shared.checkForUpdates(userInitiated: true) }
-                }
+            CommandGroup(replacing: .appInfo) {
+                AppMenuCommands()
             }
         }
+
+        Window("À propos de Summer Drop", id: "about") {
+            AboutView(updater: updater)
+        }
+        .windowResizability(.contentSize)
+        .windowStyle(.hiddenTitleBar)
     }
 }

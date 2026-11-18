@@ -19,6 +19,11 @@ final class Updater {
     }
 
     static let shared = Updater()
+    nonisolated static let autoCheckKey = "autoUpdateChecks"
+
+    nonisolated static var automaticChecksEnabled: Bool {
+        UserDefaults.standard.object(forKey: autoCheckKey) as? Bool ?? true
+    }
 
     var phase: Phase = .idle
 
@@ -54,7 +59,9 @@ final class Updater {
         loopTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(2))
             while !Task.isCancelled {
-                await self?.checkForUpdates(userInitiated: false)
+                if Updater.automaticChecksEnabled {
+                    await self?.checkForUpdates(userInitiated: false)
+                }
                 try? await Task.sleep(for: .seconds(6 * 3600))
             }
         }
