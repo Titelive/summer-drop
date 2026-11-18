@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 struct ContentView: View {
     let model: AppModel
     let updater: Updater
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
@@ -39,6 +40,8 @@ struct ContentView: View {
                 BannerView(message: message) { model.banner = nil }
             }
         }
+        .animation(reduceMotion ? nil : .spring(duration: 0.45, bounce: 0.25), value: model.banner)
+        .animation(reduceMotion ? nil : .spring(duration: 0.5), value: model.connection)
         .sheet(isPresented: Binding(
             get: { model.showOnboarding },
             set: { model.showOnboarding = $0 }
@@ -52,6 +55,8 @@ struct ContentView: View {
 
 struct SummerBackground: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var drift = false
 
     private var colors: [Color] {
         if colorScheme == .dark {
@@ -70,24 +75,56 @@ struct SummerBackground: View {
     }
 
     var body: some View {
+        // Le dégradé dérive lentement, comme une lumière d'été qui bouge.
         LinearGradient(
             colors: colors,
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
+            startPoint: drift ? .top : .topLeading,
+            endPoint: drift ? .bottomTrailing : .bottom
         )
         .overlay(
             RadialGradient(
                 colors: [Color.yellow.opacity(colorScheme == .dark ? 0.12 : 0.45), .clear],
-                center: .topTrailing,
+                center: drift ? UnitPoint(x: 0.85, y: 0.05) : .topTrailing,
                 startRadius: 10,
-                endRadius: 520
+                endRadius: drift ? 600 : 500
             )
         )
         .ignoresSafeArea()
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 14).repeatForever(autoreverses: true)) {
+                drift = true
+            }
+        }
     }
 }
 
 // MARK: - En-tête et état de la cartouche
+
+/// Soleil qui tourne doucement et « respire ».
+struct AnimatedSun: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var spin = false
+    @State private var glow = false
+
+    var body: some View {
+        Image(systemName: "sun.max.fill")
+            .font(.title2)
+            .foregroundStyle(.yellow)
+            .rotationEffect(.degrees(spin ? 360 : 0))
+            .scaleEffect(glow ? 1.08 : 0.94)
+            .shadow(color: .yellow.opacity(glow ? 0.9 : 0.3), radius: glow ? 10 : 3)
+            .onAppear {
+                guard !reduceMotion else { return }
+                withAnimation(.linear(duration: 24).repeatForever(autoreverses: false)) {
+                    spin = true
+                }
+                withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true)) {
+                    glow = true
+                }
+            }
+    }
+}
 
 struct HeaderBar: View {
     let model: AppModel
@@ -98,13 +135,11 @@ struct HeaderBar: View {
         GlassEffectContainer(spacing: 12) {
             HStack(spacing: 12) {
                 HStack(spacing: 10) {
-                    Image(systemName: "sun.max.fill")
-                        .font(.title2)
-                        .foregroundStyle(.yellow)
+                    AnimatedSun()
                     VStack(alignment: .leading, spacing: 0) {
                         Text("Summer Drop")
                             .font(.title2.weight(.bold))
-                        Text("Envoi de ROM vers la SummerCart64")
+                        Text("Envoi et récupération de ROM · SummerCart64")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -132,6 +167,39 @@ struct HeaderBar: View {
 
                 ConnectionPill(state: model.connection)
             }
+            .animation(.spring(duration: 0.45), value: updater.phase)
+        }
+    }
+}
+
+/// Point d'état : il pulse pendant la recherche et « respire » une fois connecté.
+struct StatusDot: View {
+    let color: Color
+    let isSearching: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var pulse = false
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(color.opacity(pulse ? 0 : 0.7), lineWidth: 2)
+                .scaleEffect(pulse ? 2.2 : 1)
+            Circle()
+                .fill(color)
+                .shadow(color: color.opacity(0.8), radius: pulse ? 6 : 3)
+        }
+        .frame(width: 10, height: 10)
+        .onAppear(perform: start)
+        .onChange(of: isSearching) { _, _ in
+            pulse = false
+            start()
+        }
+    }
+
+    private func start() {
+        guard !reduceMotion else { return }
+        withAnimation(.easeOut(duration: isSearching ? 0.9 : 2.4).repeatForever(autoreverses: false)) {
+            pulse = true
         }
     }
 }
@@ -159,11 +227,9 @@ struct ConnectionPill: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Circle()
-                .fill(color)
-                .frame(width: 10, height: 10)
-                .shadow(color: color.opacity(0.8), radius: 4)
+            StatusDot(color: color, isSearching: state == .searching)
             Text(label)
+                .contentTransition(.opacity)
                 .font(.callout.weight(.medium))
         }
         .padding(.horizontal, 16)
@@ -245,6 +311,8 @@ struct UpdatePill: View {
 
 struct DropZone: View {
     let model: AppModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var dashPhase: CGFloat = 0
     @State private var isTargeted = false
     @State private var showImporter = false
 
@@ -255,6 +323,7 @@ struct DropZone: View {
                 .symbolEffect(.bounce, value: isTargeted)
             Text(isTargeted ? "Lâchez pour envoyer" : "Déposez vos ROM ici")
                 .font(.title3.weight(.semibold))
+                .contentTransition(.interpolate)
             Text("Destination : \(model.currentPath)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -274,11 +343,19 @@ struct DropZone: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: 28)
-                .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
+                .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [8, 6], dashPhase: dashPhase))
                 .foregroundStyle(.white.opacity(isTargeted ? 0.9 : 0.35))
                 .padding(8)
         )
+        .scaleEffect(isTargeted && !reduceMotion ? 1.02 : 1)
         .opacity(model.isConnected ? 1 : 0.6)
+        .onAppear {
+            guard !reduceMotion else { return }
+            // Pointillés qui défilent doucement autour de la zone.
+            withAnimation(.linear(duration: 1.6).repeatForever(autoreverses: false)) {
+                dashPhase = -28
+            }
+        }
         .animation(.spring(duration: 0.3), value: isTargeted)
         .onDrop(of: [UTType.fileURL], isTargeted: $isTargeted) { providers in
             guard model.isConnected else {
@@ -342,6 +419,8 @@ struct UploadQueueView: View {
                     } currentValueLabel: {
                         Text("\(Int(model.overallProgress * 100)) %")
                             .font(.caption.monospacedDigit())
+                            .contentTransition(.numericText())
+                            .animation(.snappy, value: Int(model.overallProgress * 100))
                     }
                     .tint(.yellow)
                 }
@@ -350,8 +429,13 @@ struct UploadQueueView: View {
                     LazyVStack(spacing: 8) {
                         ForEach(model.queue) { item in
                             UploadRow(item: item, fileProgress: model.currentFileProgress)
+                                .transition(.asymmetric(
+                                    insertion: .move(edge: .top).combined(with: .opacity),
+                                    removal: .scale(scale: 0.9).combined(with: .opacity)
+                                ))
                         }
                     }
+                    .animation(.spring(duration: 0.4), value: model.queue)
                 }
             }
         }
@@ -381,6 +465,7 @@ struct UploadRow: View {
                 case .uploading:
                     ProgressView(value: fileProgress)
                         .tint(.yellow)
+                        .animation(.linear(duration: 0.12), value: fileProgress)
                 case .done:
                     Text(item.kind == .upload
                          ? "Envoyé vers \(item.destination)"
@@ -532,9 +617,11 @@ struct SDCardView: View {
         } else {
             ScrollView {
                 LazyVStack(spacing: 4) {
-                    ForEach(model.entries) { entry in
+                    ForEach(Array(model.entries.enumerated()), id: \.element.id) { index, entry in
                         SDEntryRow(entry: entry, isSelected: model.selection.contains(entry.name))
                             .contentShape(Rectangle())
+                            .transition(.opacity.combined(with: .offset(y: 8)))
+                            .animation(.spring(duration: 0.4).delay(Double(min(index, 12)) * 0.025), value: model.entries)
                             .onTapGesture(count: 2) { model.open(entry) }
                             .onTapGesture(count: 1) { model.toggleSelection(entry) }
                             .contextMenu {
@@ -601,6 +688,7 @@ struct SDEntryRow: View {
             RoundedRectangle(cornerRadius: 10)
                 .strokeBorder(Color.white.opacity(isSelected ? 0.6 : 0), lineWidth: 1)
         )
+        .animation(.easeOut(duration: 0.15), value: isSelected)
         .help(entry.isDirectory ? "Double-cliquez pour ouvrir" : "Cliquez pour sélectionner, clic droit pour télécharger")
     }
 

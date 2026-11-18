@@ -135,6 +135,8 @@ struct StatTile: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(value)
                     .font(.title3.weight(.semibold).monospacedDigit())
+                    .contentTransition(.numericText())
+                    .animation(.snappy, value: value)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 Text(title)
