@@ -1,0 +1,63 @@
+name: Compiler et publier
+
+on:
+  push:
+    tags: ["v*"]
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Outils
+        run: |
+          sw_vers
+          xcrun swiftc --version
+          xcrun --sdk macosx --show-sdk-version
+
+      - name: Récupérer sc64deployer (dernière version officielle)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p deployer
+          gh release download --repo Polprzewodnikowy/SummerCart64 --pattern 'sc64-deployer-macos-*.tgz' --dir deployer
+          tar -xzf deployer/*.tgz -C deployer
+          found="$(find deployer -type f -name sc64deployer | head -n 1)"
+          cp "$found" ./sc64deployer
+          chmod +x ./sc64deployer
+          file ./sc64deployer
+
+      - name: Version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=0.0.0-dev" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compiler et créer l'image disque
+        run: VERSION="${{ steps.version.outputs.value }}" ./build.sh --dmg
+
+      - name: Conserver l'image disque
+        uses: actions/upload-artifact@v4
+        with:
+          name: SummerDrop-${{ steps.version.outputs.value }}
+          path: build/SummerDrop.dmg
+
+      - name: Publier la version
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" build/SummerDrop.dmg \
+            --title "Summer Drop ${{ steps.version.outputs.value }}" \
+            --generate-notes
