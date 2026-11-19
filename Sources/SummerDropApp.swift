@@ -44,13 +44,13 @@ struct SummerDropApp: App {
                 AppMenuCommands()
             }
             CommandGroup(replacing: .help) {
-                Button("Revoir le tutoriel") { model.showOnboarding = true }
+                Button(L("Revoir le tutoriel", "Show the Tutorial Again")) { model.showOnboarding = true }
                 Divider()
-                Link("Summer Drop sur GitHub", destination: URL(string: "https://github.com/Titelive/summer-drop")!)
+                Link(L("Summer Drop sur GitHub", "Summer Drop on GitHub"), destination: URL(string: "https://github.com/Titelive/summer-drop")!)
             }
         }
 
-        Window("À propos de Summer Drop", id: "about") {
+        Window(L("À propos de Summer Drop", "About Summer Drop"), id: "about") {
             AboutView(updater: updater)
         }
         .windowResizability(.contentSize)

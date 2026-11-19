@@ -39,7 +39,7 @@ actor GameInfoStore {
     private var cacheDirectory: URL {
         let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
-        let dir = base.appendingPathComponent("SummerDrop/GameInfo", isDirectory: true)
+        let dir = base.appendingPathComponent(AppLanguage.isFrench ? "SummerDrop/GameInfo" : "SummerDrop/GameInfo-en", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }
@@ -112,15 +112,15 @@ actor GameInfoStore {
         var info = GameInfo(romName: romName, title: title.isEmpty ? romName : title)
 
         let regionNames: [String: String] = [
-            "Europe": "Europe", "USA": "États-Unis", "Japan": "Japon", "France": "France",
-            "Germany": "Allemagne", "Spain": "Espagne", "Italy": "Italie", "Australia": "Australie",
-            "World": "Monde", "Brazil": "Brésil", "Korea": "Corée", "Canada": "Canada",
-            "Netherlands": "Pays-Bas", "Sweden": "Suède", "UK": "Royaume-Uni", "China": "Chine",
+            "Europe": "Europe", "USA": L("États-Unis", "USA"), "Japan": L("Japon", "Japan"), "France": "France",
+            "Germany": L("Allemagne", "Germany"), "Spain": L("Espagne", "Spain"), "Italy": L("Italie", "Italy"), "Australia": L("Australie", "Australia"),
+            "World": L("Monde", "World"), "Brazil": L("Brésil", "Brazil"), "Korea": L("Corée", "Korea"), "Canada": "Canada",
+            "Netherlands": L("Pays-Bas", "Netherlands"), "Sweden": L("Suède", "Sweden"), "UK": L("Royaume-Uni", "UK"), "China": L("Chine", "China"),
         ]
         let languageNames: [String: String] = [
-            "En": "Anglais", "Fr": "Français", "De": "Allemand", "Es": "Espagnol", "It": "Italien",
-            "Nl": "Néerlandais", "Ja": "Japonais", "Sv": "Suédois", "Pt": "Portugais", "Da": "Danois",
-            "Fi": "Finnois", "No": "Norvégien", "Zh": "Chinois", "Ko": "Coréen",
+            "En": L("Anglais", "English"), "Fr": L("Français", "French"), "De": L("Allemand", "German"), "Es": L("Espagnol", "Spanish"), "It": L("Italien", "Italian"),
+            "Nl": L("Néerlandais", "Dutch"), "Ja": L("Japonais", "Japanese"), "Sv": L("Suédois", "Swedish"), "Pt": L("Portugais", "Portuguese"), "Da": L("Danois", "Danish"),
+            "Fi": L("Finnois", "Finnish"), "No": L("Norvégien", "Norwegian"), "Zh": L("Chinois", "Chinese"), "Ko": L("Coréen", "Korean"),
         ]
 
         var groups: [String] = []
@@ -138,7 +138,7 @@ actor GameInfoStore {
             } else if !parts.isEmpty, parts.allSatisfy({ $0.count == 2 && languageNames[$0] != nil }) {
                 info.languages += parts.compactMap { languageNames[$0] }
             } else if group.hasPrefix("Rev ") {
-                info.revision = "Révision " + group.dropFirst(4)
+                info.revision = L("Révision ", "Revision ") + group.dropFirst(4)
             } else {
                 info.flags.append(group)
             }
@@ -251,8 +251,9 @@ actor GameInfoStore {
         }
 
         // 3. Résumé, en français si l'article existe.
-        let summaryLanguage = frTitle != nil ? "fr" : "en"
-        let summaryTitle = frTitle ?? enTitle
+        let useFrench = AppLanguage.isFrench && frTitle != nil
+        let summaryLanguage = useFrench ? "fr" : "en"
+        let summaryTitle = useFrench ? (frTitle ?? enTitle) : enTitle
         if let encoded = summaryTitle.replacingOccurrences(of: " ", with: "_")
             .addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)?
             .replacingOccurrences(of: "/", with: "%2F"),
@@ -279,7 +280,7 @@ actor GameInfoStore {
                 let labels = (value as? [String: Any])?["labels"] as? [String: Any] ?? [:]
                 let fr = (labels["fr"] as? [String: Any])?["value"] as? String
                 let en = (labels["en"] as? [String: Any])?["value"] as? String
-                if let label = fr ?? en { result[id] = label }
+                if let label = AppLanguage.isFrench ? (fr ?? en) : (en ?? fr) { result[id] = label }
             }
         }
         return result

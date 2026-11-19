@@ -63,7 +63,7 @@ struct StarRatingView: View {
         .animation(.spring(duration: 0.25), value: hovered)
         .animation(.spring(duration: 0.25), value: rating)
         .accessibilityElement()
-        .accessibilityLabel("\(rating) étoile\(rating > 1 ? "s" : "") sur 5")
+        .accessibilityLabel(L("\(rating) étoile\(rating > 1 ? "s" : "") sur 5", "\(rating) star\(rating > 1 ? "s" : "") out of 5"))
     }
 }
 
@@ -101,7 +101,7 @@ struct GameCardView: View {
                         StarRatingView(rating: ratings.rating(for: entry.name), size: 15) { value in
                             ratings.setRating(value, for: entry.name)
                         }
-                        Text("Ma note")
+                        Text(L("Ma note", "My rating"))
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                     }
@@ -119,7 +119,7 @@ struct GameCardView: View {
                     VStack(spacing: 6) {
                         Image(systemName: "photo.on.rectangle.angled")
                             .font(.title2)
-                        Text("Aucune capture trouvée pour ce jeu")
+                        Text(L("Aucune capture trouvée pour ce jeu", "No screenshots found for this game"))
                             .font(.caption)
                     }
                     .foregroundStyle(.tertiary)
@@ -147,12 +147,12 @@ struct GameCardView: View {
                 } else if info == nil {
                     HStack(spacing: 8) {
                         ProgressView().controlSize(.small)
-                        Text("Recherche des informations…")
+                        Text(L("Recherche des informations…", "Looking up information…"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 } else {
-                    Text("Aucun résumé trouvé.")
+                    Text(L("Aucun résumé trouvé.", "No summary found."))
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
@@ -161,17 +161,17 @@ struct GameCardView: View {
 
             HStack {
                 if let url = info?.wikipediaURL {
-                    Link("Lire sur Wikipédia", destination: url)
+                    Link(L("Lire sur Wikipédia", "Read on Wikipedia"), destination: url)
                         .font(.caption)
                 }
                 Spacer()
                 if info?.imagesFoundByAI == true {
-                    Label("Images trouvées par l'IA d'Apple", systemImage: "apple.intelligence")
+                    Label(L("Images trouvées par l'IA d'Apple", "Images found by Apple's AI"), systemImage: "apple.intelligence")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                        .help("L'IA de l'appareil a reconnu le jeu ; vérifiez que ce sont les bonnes images.")
+                        .help(L("L'IA de l'appareil a reconnu le jeu ; vérifiez que ce sont les bonnes images.", "The on-device AI recognized the game; check that these are the right images."))
                 }
-                Text("Sources : Wikipédia, Wikidata, libretro")
+                Text(L("Sources : Wikipédia, Wikidata, libretro", "Sources: Wikipedia, Wikidata, libretro"))
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
@@ -198,25 +198,25 @@ struct GameCardView: View {
         let ext = (entry.name as NSString).pathExtension.lowercased()
         let format: String
         switch ext {
-        case "z64": format = "z64 · big-endian (natif)"
-        case "v64": format = "v64 · octets inversés"
+        case "z64": format = L("z64 · big-endian (natif)", "z64 · big-endian (native)")
+        case "v64": format = L("v64 · octets inversés", "v64 · byte-swapped")
         case "n64": format = "n64 · little-endian"
         default: format = ext
         }
         return Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 5) {
             if !parsed.regions.isEmpty {
-                row("Région", parsed.regions.joined(separator: ", "))
+                row(L("Région", "Region"), parsed.regions.joined(separator: ", "))
             }
             if !parsed.languages.isEmpty {
-                row("Langues", parsed.languages.joined(separator: ", "))
+                row(L("Langues", "Languages"), parsed.languages.joined(separator: ", "))
             }
-            row("Taille", entry.sizeText.isEmpty ? "—" : entry.sizeText)
+            row(L("Taille", "Size"), entry.sizeText.isEmpty ? "—" : entry.sizeText)
             row("Format", format)
             if let revision = parsed.revision {
                 row("Version", revision)
             }
             if !parsed.flags.isEmpty {
-                row("Mentions", parsed.flags.joined(separator: ", "))
+                row(L("Mentions", "Tags"), parsed.flags.joined(separator: ", "))
             }
         }
         .font(.caption)

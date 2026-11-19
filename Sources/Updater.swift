@@ -75,21 +75,21 @@ final class Updater {
             break
         }
         guard let repo, !repo.isEmpty else {
-            if userInitiated { phase = .failed("Aucun dépôt GitHub n'est configuré.") }
+            if userInitiated { phase = .failed(L("Aucun dépôt GitHub n'est configuré.", "No GitHub repository is configured.")) }
             return
         }
 
         phase = .checking
         do {
             guard let apiURL = URL(string: "https://api.github.com/repos/\(repo)/releases/latest") else {
-                throw UpdateError("Adresse du dépôt invalide.")
+                throw UpdateError(L("Adresse du dépôt invalide.", "Invalid repository address."))
             }
             var request = URLRequest(url: apiURL)
             request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
             request.setValue("SummerDrop/\(currentVersion)", forHTTPHeaderField: "User-Agent")
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-                throw UpdateError("Aucune version publiée sur GitHub.")
+                throw UpdateError(L("Aucune version publiée sur GitHub.", "No release published on GitHub."))
             }
             let release = try JSONDecoder().decode(Release.self, from: data)
             let latest = Self.cleanVersion(release.tag_name)
@@ -99,11 +99,11 @@ final class Updater {
                 return
             }
             guard let asset = release.assets.first(where: { $0.name.lowercased().hasSuffix(".dmg") }) else {
-                throw UpdateError("La version \(latest) n'a pas d'image disque.")
+                throw UpdateError(L("La version \(latest) n'a pas d'image disque.", "Version \(latest) has no disk image."))
             }
             let target = Bundle.main.bundleURL
             guard FileManager.default.isWritableFile(atPath: target.deletingLastPathComponent().path) else {
-                throw UpdateError("Le dossier de l'app est protégé en écriture : mise à jour impossible.")
+                throw UpdateError(L("Le dossier de l'app est protégé en écriture : mise à jour impossible.", "The app's folder is write-protected: can't update."))
             }
 
             phase = .downloading(latest)
@@ -115,7 +115,7 @@ final class Updater {
             stagedAppURL = staged
             installOnQuit = true
             phase = .ready(latest)
-            Notifier.shared.post(title: "Mise à jour prête", body: "Summer Drop \(latest) est prête : redémarrez l'app pour l'installer.")
+            Notifier.shared.post(title: L("Mise à jour prête", "Update ready"), body: L("Summer Drop \(latest) est prête : redémarrez l'app pour l'installer.", "Summer Drop \(latest) is ready: restart the app to install it."))
         } catch {
             phase = userInitiated ? .failed(error.localizedDescription) : .idle
         }
@@ -175,7 +175,7 @@ final class Updater {
 
         let items = try fm.contentsOfDirectory(atPath: mountPoint.path)
         guard let appName = items.first(where: { $0.hasSuffix(".app") }) else {
-            throw UpdateError("L'image disque ne contient pas d'app.")
+            throw UpdateError(L("L'image disque ne contient pas d'app.", "The disk image contains no app."))
         }
         let staged = work.appendingPathComponent(appName)
         try run("/usr/bin/ditto", [mountPoint.appendingPathComponent(appName).path, staged.path])
@@ -184,7 +184,7 @@ final class Updater {
         // Vérification minimale : c'est bien la même app.
         let newID = Bundle(url: staged)?.bundleIdentifier
         guard newID != nil, newID == Bundle.main.bundleIdentifier else {
-            throw UpdateError("L'app téléchargée ne correspond pas à Summer Drop.")
+            throw UpdateError(L("L'app téléchargée ne correspond pas à Summer Drop.", "The downloaded app is not Summer Drop."))
         }
         return staged
     }
@@ -198,7 +198,7 @@ final class Updater {
         try process.run()
         process.waitUntilExit()
         if process.terminationStatus != 0 {
-            throw UpdateError("Échec de \((path as NSString).lastPathComponent).")
+            throw UpdateError(L("Échec de \((path as NSString).lastPathComponent).", "\((path as NSString).lastPathComponent) failed."))
         }
     }
 

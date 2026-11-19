@@ -43,12 +43,12 @@ struct ContentView: View {
         .animation(reduceMotion ? nil : .spring(duration: 0.45, bounce: 0.25), value: model.banner)
         .animation(reduceMotion ? nil : .spring(duration: 0.5), value: model.connection)
         .confirmationDialog(
-            "Déplacer ces ROM ?",
+            L("Déplacer ces ROM ?", "Move these ROMs?"),
             isPresented: Binding(get: { model.pendingMove }, set: { model.pendingMove = $0 }),
             titleVisibility: .visible
         ) {
-            Button("Déplacer", role: .destructive) { model.confirmMove() }
-            Button("Annuler", role: .cancel) { model.pendingMove = false }
+            Button(L("Déplacer", "Move"), role: .destructive) { model.confirmMove() }
+            Button(L("Annuler", "Cancel"), role: .cancel) { model.pendingMove = false }
         } message: {
             Text(model.pendingMoveDescription)
         }
@@ -187,7 +187,7 @@ struct HeaderBar: View {
                     VStack(alignment: .leading, spacing: 0) {
                         Text("Summer Drop")
                             .font(.title2.weight(.bold))
-                        Text("Envoi et récupération de ROM · SummerCart64")
+                        Text(L("Envoi et récupération de ROM · SummerCart64", "Send and retrieve ROMs · SummerCart64"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -208,7 +208,7 @@ struct HeaderBar: View {
                         .frame(width: 28, height: 28)
                 }
                 .buttonStyle(.glass)
-                .help("Statistiques")
+                .help(L("Statistiques", "Statistics"))
                 .popover(isPresented: $showStats, arrowEdge: .bottom) {
                     StatsView(model: model)
                 }
@@ -257,10 +257,10 @@ struct ConnectionPill: View {
 
     private var label: String {
         switch state {
-        case .searching: return "Recherche de la cartouche…"
-        case .connected(let device): return "SummerCart64 connectée · \(device.serial)"
-        case .disconnected: return "Cartouche non connectée"
-        case .missingTool: return "sc64deployer introuvable"
+        case .searching: return L("Recherche de la cartouche…", "Looking for the cartridge…")
+        case .connected(let device): return L("SummerCart64 connectée · \(device.serial)", "SummerCart64 connected · \(device.serial)")
+        case .disconnected: return L("Cartouche non connectée", "Cartridge not connected")
+        case .missingTool: return L("sc64deployer introuvable", "sc64deployer not found")
         }
     }
 
@@ -288,8 +288,8 @@ struct ConnectionPill: View {
     }
 
     private var helpText: String {
-        if case .connected(let device) = state { return "Port : \(device.port)" }
-        return "La détection se refait toutes les 3 secondes."
+        if case .connected(let device) = state { return L("Port : \(device.port)", "Port: \(device.port)") }
+        return L("La détection se refait toutes les 3 secondes.", "Detection runs every 3 seconds.")
     }
 }
 
@@ -306,7 +306,7 @@ struct UpdatePill: View {
         case .downloading(let version):
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text("Téléchargement de la version \(version)…")
+                Text(L("Téléchargement de la version \(version)…", "Downloading version \(version)…"))
                     .font(.callout)
             }
             .padding(.horizontal, 14)
@@ -316,20 +316,20 @@ struct UpdatePill: View {
             HStack(spacing: 10) {
                 Image(systemName: "sparkles")
                     .foregroundStyle(.yellow)
-                Text("Version \(version) prête")
+                Text(L("Version \(version) prête", "Version \(version) ready"))
                     .font(.callout.weight(.medium))
-                Button("Redémarrer") { updater.installAndRelaunch() }
+                Button(L("Redémarrer", "Restart")) { updater.installAndRelaunch() }
                     .buttonStyle(.glassProminent)
                     .controlSize(.small)
                     .disabled(isUploading)
-                    .help(isUploading ? "Attendez la fin des envois." : "Installe la mise à jour et relance l'app.")
+                    .help(isUploading ? L("Attendez la fin des envois.", "Wait for transfers to finish.") : L("Installe la mise à jour et relance l'app.", "Installs the update and relaunches the app."))
             }
             .padding(.leading, 14)
             .padding(.trailing, 8)
             .padding(.vertical, 6)
             .glassEffect(Glass.regular.tint(Color.yellow.opacity(0.25)), in: .capsule)
         case .upToDate:
-            dismissable(text: "Summer Drop \(updater.currentVersion) est à jour", systemImage: "checkmark.seal.fill", color: .green)
+            dismissable(text: L("Summer Drop \(updater.currentVersion) est à jour", "Summer Drop \(updater.currentVersion) is up to date"), systemImage: "checkmark.seal.fill", color: .green)
         case .failed(let message):
             dismissable(text: message, systemImage: "exclamationmark.triangle.fill", color: .red)
         }
@@ -370,7 +370,7 @@ struct DropZone: View {
             HStack(spacing: 8) {
                 Image(systemName: "laptopcomputer.and.arrow.down")
                     .foregroundStyle(.orange)
-                Text("Envoyer sur la cartouche")
+                Text(L("Envoyer sur la cartouche", "Send to the cartridge"))
                     .font(.subheadline.weight(.semibold))
                 Spacer()
                 HStack(spacing: 4) {
@@ -380,7 +380,7 @@ struct DropZone: View {
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
-                .help("Du Mac vers la carte SD de la SummerCart64")
+                .help(L("Du Mac vers la carte SD de la SummerCart64", "From the Mac to the SummerCart64's SD card"))
             }
 
             Spacer(minLength: 0)
@@ -388,13 +388,13 @@ struct DropZone: View {
             Image(systemName: isTargeted ? "arrow.down.circle.fill" : "square.and.arrow.down.on.square")
                 .font(.system(size: 44, weight: .light))
                 .symbolEffect(.bounce, value: isTargeted)
-            Text(isTargeted ? "Lâchez pour envoyer" : "Déposez vos ROM ici")
+            Text(isTargeted ? L("Lâchez pour envoyer", "Drop to send") : L("Déposez vos ROM ici", "Drop your ROMs here"))
                 .font(.title3.weight(.semibold))
                 .contentTransition(.interpolate)
             Button {
                 showImporter = true
             } label: {
-                Label("Choisir des ROM ou un dossier…", systemImage: "folder")
+                Label(L("Choisir des ROM ou un dossier…", "Choose ROMs or a folder…"), systemImage: "folder")
             }
             .buttonStyle(.glassProminent)
             .disabled(!model.isConnected)
@@ -405,7 +405,7 @@ struct DropZone: View {
             HStack(spacing: 8) {
                 Image(systemName: "sdcard.fill")
                     .foregroundStyle(.orange)
-                Text("Arrivée :")
+                Text(L("Arrivée :", "Destination:"))
                     .foregroundStyle(.secondary)
                 Text(model.currentPathDisplay)
                     .fontWeight(.medium)
@@ -414,7 +414,7 @@ struct DropZone: View {
                 Spacer(minLength: 0)
             }
             .font(.callout)
-            .help("Ouvrez un dossier dans la liste de droite pour changer la destination.")
+            .help(L("Ouvrez un dossier dans la liste de droite pour changer la destination.", "Open a folder in the right-hand list to change the destination."))
         }
         .frame(maxWidth: .infinity, minHeight: 240)
         .padding(20)
@@ -440,7 +440,7 @@ struct DropZone: View {
         .animation(.spring(duration: 0.3), value: isTargeted)
         .onDrop(of: [UTType.fileURL], isTargeted: $isTargeted) { providers in
             guard model.isConnected else {
-                model.banner = "Branchez d'abord la SummerCart64."
+                model.banner = L("Branchez d'abord la SummerCart64.", "Plug in the SummerCart64 first.")
                 return false
             }
             for provider in providers {
@@ -467,7 +467,7 @@ struct UploadQueueView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Transferts")
+                Text(L("Transferts", "Transfers"))
                     .font(.headline)
                 Spacer()
                 if model.hasCompletedDownloads {
@@ -478,24 +478,24 @@ struct UploadQueueView: View {
                     }
                     .buttonStyle(.glass)
                     .controlSize(.small)
-                    .help("Afficher les fichiers téléchargés dans le Finder")
+                    .help(L("Afficher les fichiers téléchargés dans le Finder", "Show downloaded files in the Finder"))
                 }
                 if !model.queue.isEmpty && !model.isUploading {
-                    Button("Effacer") { model.clearFinished() }
+                    Button(L("Effacer", "Clear")) { model.clearFinished() }
                         .buttonStyle(.glass)
                         .controlSize(.small)
                 }
             }
 
             if model.queue.isEmpty {
-                Text("Aucun transfert pour l'instant.")
+                Text(L("Aucun transfert pour l'instant.", "No transfers yet."))
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 if model.isUploading {
                     ProgressView(value: model.overallProgress) {
-                        Text("Progression totale")
+                        Text(L("Progression totale", "Overall progress"))
                             .font(.caption)
                     } currentValueLabel: {
                         Text("\(Int(model.overallProgress * 100)) %")
@@ -544,7 +544,7 @@ struct UploadRow: View {
                     .truncationMode(.middle)
                 switch item.state {
                 case .waiting:
-                    Text("\(item.kind == .upload ? "Envoi" : "Téléchargement") en attente · \(sizeText)")
+                    Text(L("\(item.kind == .upload ? "Envoi" : "Téléchargement") en attente · \(sizeText)", "\(item.kind == .upload ? "Upload" : "Download") pending · \(sizeText)"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 case .uploading:
@@ -553,8 +553,8 @@ struct UploadRow: View {
                         .animation(.linear(duration: 0.12), value: fileProgress)
                 case .done:
                     Text(item.kind == .upload
-                         ? "Envoyé sur \(AppModel.sdDisplayPath((item.destination as NSString).deletingLastPathComponent))"
-                         : "Téléchargé dans \((item.destination as NSString).deletingLastPathComponent)")
+                         ? L("Envoyé sur \(AppModel.sdDisplayPath((item.destination as NSString).deletingLastPathComponent))", "Sent to \(AppModel.sdDisplayPath((item.destination as NSString).deletingLastPathComponent))")
+                         : L("Téléchargé dans \((item.destination as NSString).deletingLastPathComponent)", "Downloaded to \((item.destination as NSString).deletingLastPathComponent)"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 case .failed(let message):
@@ -606,7 +606,7 @@ struct SDCardView: View {
     /// Fichiers du Finder ou ROM glissées depuis le panneau Mac : envoi sur la carte.
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
         guard model.isConnected else {
-            model.banner = "Branchez d'abord la SummerCart64."
+            model.banner = L("Branchez d'abord la SummerCart64.", "Plug in the SummerCart64 first.")
             return false
         }
         for provider in providers {
@@ -672,7 +672,7 @@ struct SDCardView: View {
                         }
                         .buttonStyle(.glass)
                         .disabled(model.currentPath == "/" || model.isLoadingList || model.isUploading)
-                        .help("Dossier parent")
+                        .help(L("Dossier parent", "Parent folder"))
 
                         Button {
                             Task { await model.refreshList() }
@@ -691,7 +691,7 @@ struct SDCardView: View {
                         }
                         .buttonStyle(.glass)
                         .disabled(!model.isConnected || model.isLoadingList || model.isUploading)
-                        .help("Actualiser")
+                        .help(L("Actualiser", "Refresh"))
                     }
                 }
             }
@@ -708,7 +708,7 @@ struct SDCardView: View {
                         model.toggleSelectAll()
                     } label: {
                         HStack(spacing: 6) {
-                            Text(model.allFilesSelected ? "Tout désélectionner" : "Tout sélectionner")
+                            Text(model.allFilesSelected ? L("Tout désélectionner", "Deselect All") : L("Tout sélectionner", "Select All"))
                             if isActive {
                                 Text("⌘A")
                                     .font(.caption.monospaced())
@@ -754,7 +754,7 @@ struct SDCardView: View {
             }
         }
         .fileDialogDefaultDirectory(model.suggestedDownloadFolder)
-        .fileDialogConfirmationLabel("Choisir ce dossier")
+        .fileDialogConfirmationLabel(L("Choisir ce dossier", "Choose This Folder"))
     }
 
     /// Champ de recherche (⌘K pour y aller, Échap pour effacer).
@@ -762,7 +762,7 @@ struct SDCardView: View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
-            TextField("Rechercher", text: Binding(
+            TextField(L("Rechercher", "Search"), text: Binding(
                 get: { model.searchText },
                 set: { model.searchText = $0 }
             ))
@@ -784,7 +784,7 @@ struct SDCardView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .help("Effacer la recherche")
+                .help(L("Effacer la recherche", "Clear search"))
             }
         }
         .padding(.horizontal, 12)
@@ -808,12 +808,12 @@ struct SDCardView: View {
             HStack(spacing: 8) {
                 Image(systemName: "laptopcomputer.and.arrow.down")
                     .foregroundStyle(.blue)
-                Text("Récupérer sur le Mac")
+                Text(L("Récupérer sur le Mac", "Retrieve to the Mac"))
                     .font(.subheadline.weight(.semibold))
                 Spacer()
                 Text(count == 0
-                     ? "Cochez des ROM ou glissez-les à gauche"
-                     : "\(count) fichier\(count > 1 ? "s" : "") sélectionné\(count > 1 ? "s" : "")")
+                     ? L("Cochez des ROM ou glissez-les à gauche", "Check ROMs or drag them to the left")
+                     : L("\(count) fichier\(count > 1 ? "s" : "") sélectionné\(count > 1 ? "s" : "")", "\(count) file\(count > 1 ? "s" : "") selected"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .contentTransition(.numericText())
@@ -826,18 +826,18 @@ struct SDCardView: View {
                     .lineLimit(1)
                     .truncationMode(.head)
                     .help(model.suggestedDownloadFolder?.path ?? "")
-                Button("Changer…") { showFolderPicker = true }
+                Button(L("Changer…", "Change…")) { showFolderPicker = true }
                     .buttonStyle(.glass)
                     .controlSize(.small)
                 Spacer()
                 Button {
                     retrieve(model.selectedFiles)
                 } label: {
-                    Label(count == 0 ? "Récupérer" : "Récupérer (\(count))", systemImage: "arrow.down.to.line")
+                    Label(count == 0 ? L("Récupérer", "Retrieve") : L("Récupérer (\(count))", "Retrieve (\(count))"), systemImage: "arrow.down.to.line")
                 }
                 .buttonStyle(.glassProminent)
                 .disabled(count == 0)
-                .help(count == 0 ? "Cochez d'abord des ROM dans la liste" : "Copier les fichiers cochés dans ce dossier du Mac")
+                .help(count == 0 ? L("Cochez d'abord des ROM dans la liste", "Check some ROMs in the list first") : L("Copier les fichiers cochés dans ce dossier du Mac", "Copy the checked files to this Mac folder"))
             }
         }
         .padding(14)
@@ -850,17 +850,17 @@ struct SDCardView: View {
         if !model.isConnected {
             placeholder(
                 systemImage: "cable.connector",
-                title: "Branchez la SummerCart64",
-                detail: "Reliez la cartouche au Mac en USB-C, console éteinte."
+                title: L("Branchez la SummerCart64", "Plug in the SummerCart64"),
+                detail: L("Reliez la cartouche au Mac en USB-C, console éteinte.", "Connect the cartridge to the Mac over USB-C, with the console off.")
             )
         } else if model.isLoadingList && model.entries.isEmpty {
-            ProgressView("Lecture de la carte…")
+            ProgressView(L("Lecture de la carte…", "Reading the card…"))
         } else if let error = model.listError {
-            placeholder(systemImage: "exclamationmark.triangle", title: "Lecture impossible", detail: error)
+            placeholder(systemImage: "exclamationmark.triangle", title: L("Lecture impossible", "Can't read the card"), detail: error)
         } else if !model.entries.isEmpty && model.visibleEntries.isEmpty {
-            placeholder(systemImage: "magnifyingglass", title: "Aucun résultat", detail: "Aucun fichier ne contient « \(model.searchText) » dans ce dossier.")
+            placeholder(systemImage: "magnifyingglass", title: L("Aucun résultat", "No results"), detail: L("Aucun fichier ne contient « \(model.searchText) » dans ce dossier.", "No file in this folder contains “\(model.searchText)”."))
         } else if model.entries.isEmpty {
-            placeholder(systemImage: "tray", title: "Dossier vide", detail: "Glissez ici des ROM du Mac ou du Finder.")
+            placeholder(systemImage: "tray", title: L("Dossier vide", "Empty folder"), detail: L("Glissez ici des ROM du Mac ou du Finder.", "Drag ROMs here from the Mac pane or the Finder."))
         } else {
             ScrollView {
                 LazyVStack(spacing: 4) {
@@ -877,9 +877,9 @@ struct SDCardView: View {
                             .onDrag { dragProvider(for: entry) }
                             .contextMenu {
                                 if entry.isDirectory {
-                                    Button("Ouvrir") { model.open(entry) }
+                                    Button(L("Ouvrir", "Open")) { model.open(entry) }
                                 } else {
-                                    Button("Récupérer sur le Mac") {
+                                    Button(L("Récupérer sur le Mac", "Retrieve to the Mac")) {
                                         let selected = model.selectedFiles
                                         retrieve(selected.contains(entry) ? selected : [entry])
                                     }
@@ -989,7 +989,7 @@ struct SDEntryRow: View {
                 .strokeBorder(Color.white.opacity(isSelected ? 0.6 : 0), lineWidth: 1)
         )
         .animation(.easeOut(duration: 0.15), value: isSelected)
-        .help(entry.isDirectory ? "Double-cliquez pour ouvrir" : "Cliquez pour cocher, puis « Récupérer » en bas")
+        .help(entry.isDirectory ? L("Double-cliquez pour ouvrir", "Double-click to open") : L("Cliquez pour cocher, puis « Récupérer » en bas", "Click to check, then “Retrieve” below"))
     }
 
     private var iconName: String {
@@ -1015,11 +1015,11 @@ struct MissingToolView: View {
         VStack(spacing: 14) {
             Image(systemName: "wrench.and.screwdriver")
                 .font(.system(size: 44, weight: .light))
-            Text("sc64deployer introuvable")
+            Text(L("sc64deployer introuvable", "sc64deployer not found"))
                 .font(.title2.weight(.semibold))
-            Text("Placez sc64deployer à côté de l'app, ou indiquez où il se trouve.")
+            Text(L("Placez sc64deployer à côté de l'app, ou indiquez où il se trouve.", "Put sc64deployer next to the app, or show where it is."))
                 .foregroundStyle(.secondary)
-            Button("Localiser sc64deployer…") { showPicker = true }
+            Button(L("Localiser sc64deployer…", "Locate sc64deployer…")) { showPicker = true }
                 .buttonStyle(.glassProminent)
         }
         .padding(40)

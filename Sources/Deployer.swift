@@ -158,11 +158,11 @@ enum Deployer {
         guard let unit = text.last else { return text }
         let number = text.dropLast()
         switch unit {
-        case "B": return "\(number) o"
-        case "K": return "\(number) Ko"
-        case "M": return "\(number) Mo"
-        case "G": return "\(number) Go"
-        case "T": return "\(number) To"
+        case "B": return L("\(number) o", "\(number) B")
+        case "K": return L("\(number) Ko", "\(number) KB")
+        case "M": return L("\(number) Mo", "\(number) MB")
+        case "G": return L("\(number) Go", "\(number) GB")
+        case "T": return L("\(number) To", "\(number) TB")
         default: return text
         }
     }
@@ -175,20 +175,20 @@ enum Deployer {
     /// Traduit les erreurs les plus courantes en français.
     static func friendlyError(_ output: String) -> String {
         if consoleWasOn(output) {
-            return "La console est allumée. Éteignez l'Analogue 3D avant d'accéder à la carte SD."
+            return L("La console est allumée. Éteignez l'Analogue 3D avant d'accéder à la carte SD.", "The console is on. Turn off the Analogue 3D before accessing the SD card.")
         }
         if output.contains("No SC64 devices found") {
-            return "SummerCart64 introuvable. Branchez-la en USB-C."
+            return L("SummerCart64 introuvable. Branchez-la en USB-C.", "SummerCart64 not found. Plug it in over USB-C.")
         }
         if output.contains("Couldn't init the SD card") {
-            return "Carte SD de la cartouche absente ou illisible."
+            return L("Carte SD de la cartouche absente ou illisible.", "The cartridge's SD card is missing or unreadable.")
         }
         if output.contains("Could not find the path") || output.contains("Could not find the file") {
-            return "Chemin introuvable sur la carte SD."
+            return L("Chemin introuvable sur la carte SD.", "Path not found on the SD card.")
         }
         let lines = output.split(whereSeparator: \.isNewline)
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
-        return lines.last ?? "Erreur inconnue de sc64deployer."
+        return lines.last ?? L("Erreur inconnue de sc64deployer.", "Unknown sc64deployer error.")
     }
 }

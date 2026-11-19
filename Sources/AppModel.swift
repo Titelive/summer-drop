@@ -141,7 +141,7 @@ final class AppModel {
         if result.succeeded, let first = devices.first {
             connection = .connected(first)
             if wasDisconnected {
-                Notifier.shared.post(title: "SummerCart64 connectée", body: "La cartouche \(first.serial) est prête.", sound: false)
+                Notifier.shared.post(title: L("SummerCart64 connectée", "SummerCart64 connected"), body: L("La cartouche \(first.serial) est prête.", "Cartridge \(first.serial) is ready."), sound: false)
             }
             if !wasConnected {
                 currentPath = "/"
@@ -150,7 +150,7 @@ final class AppModel {
         } else {
             connection = .disconnected
             if wasConnected {
-                Notifier.shared.post(title: "SummerCart64 débranchée", body: "La cartouche n'est plus détectée.", sound: false)
+                Notifier.shared.post(title: L("SummerCart64 débranchée", "SummerCart64 unplugged"), body: L("La cartouche n'est plus détectée.", "The cartridge is no longer detected."), sound: false)
                 entries = []
                 listError = nil
             }
@@ -162,7 +162,7 @@ final class AppModel {
         deployerURL = Deployer.locate()
         connection = deployerURL == nil ? .missingTool : .searching
         if deployerURL == nil {
-            banner = "Ce fichier n'est pas exécutable. Lancez « chmod +x » dessus dans le Terminal."
+            banner = L("Ce fichier n'est pas exécutable. Lancez « chmod +x » dessus dans le Terminal.", "This file is not executable. Run “chmod +x” on it in Terminal.")
         }
         Task { await refreshConnection() }
     }
@@ -243,7 +243,7 @@ final class AppModel {
             added += 1
         }
         if added == 0 {
-            banner = "Aucune ROM trouvée (.z64, .n64, .v64, .ndd)."
+            banner = L("Aucune ROM trouvée (.z64, .n64, .v64, .ndd).", "No ROM found (.z64, .n64, .v64, .ndd).")
             return
         }
         startQueueIfNeeded()
@@ -413,12 +413,12 @@ final class AppModel {
             do {
                 try FileManager.default.trashItem(at: URL(fileURLWithPath: item.source), resultingItemURL: nil)
             } catch {
-                banner = "Copié, mais impossible de mettre « \(item.name) » à la corbeille."
+                banner = L("Copié, mais impossible de mettre « \(item.name) » à la corbeille.", "Copied, but “\(item.name)” could not be moved to the Trash.")
             }
         case .download:
             let result = await Deployer.run(tool, ["sd", "rm", item.source])
             if !result.succeeded || Deployer.consoleWasOn(result.output) {
-                banner = "Copié sur le Mac, mais « \(item.name) » n'a pas pu être effacé de la carte."
+                banner = L("Copié sur le Mac, mais « \(item.name) » n'a pas pu être effacé de la carte.", "Copied to the Mac, but “\(item.name)” could not be deleted from the card.")
             }
         }
     }
@@ -433,16 +433,16 @@ final class AppModel {
         case .cardFiles(let files, _): count = files.count
         case .empty: count = 0
         }
-        banner = "\(count) ROM à déplacer : cliquez sur l'autre panneau puis ⌘V."
+        banner = L("\(count) ROM à déplacer : cliquez sur l'autre panneau puis ⌘V.", "\(count) ROM\(count > 1 ? "s" : "") to move: click the other pane, then ⌘V.")
     }
 
     /// Texte de la confirmation de déplacement.
     var pendingMoveDescription: String {
         switch clipboard {
         case .macFiles(let files):
-            return "\(files.count) ROM seront copiées sur la carte, puis mises à la corbeille du Mac."
+            return L("\(files.count) ROM seront copiées sur la carte, puis mises à la corbeille du Mac.", "\(files.count) ROM\(files.count > 1 ? "s" : "") will be copied to the card, then moved to the Mac's Trash.")
         case .cardFiles(let files, _):
-            return "\(files.count) ROM seront copiées sur le Mac, puis effacées de la carte SD. Cette suppression est définitive."
+            return L("\(files.count) ROM seront copiées sur le Mac, puis effacées de la carte SD. Cette suppression est définitive.", "\(files.count) ROM\(files.count > 1 ? "s" : "") will be copied to the Mac, then deleted from the SD card. This deletion is permanent.")
         case .empty:
             return ""
         }
@@ -453,18 +453,18 @@ final class AppModel {
         switch activePane {
         case .mac:
             let files = selectedMacFiles
-            guard !files.isEmpty else { banner = "Cochez d'abord des ROM dans le panneau Mac."; return }
+            guard !files.isEmpty else { banner = L("Cochez d'abord des ROM dans le panneau Mac.", "First check some ROMs in the Mac pane."); return }
             clipboard = .macFiles(files)
             // Aussi dans le presse-papiers du Mac : on peut coller dans le Finder.
             let pasteboard = NSPasteboard.general
             pasteboard.clearContents()
             pasteboard.writeObjects(files.map { $0 as NSURL })
-            banner = "\(files.count) ROM copiée\(files.count > 1 ? "s" : "") : cliquez sur la carte puis ⌘V."
+            banner = L("\(files.count) ROM copiée\(files.count > 1 ? "s" : "") : cliquez sur la carte puis ⌘V.", "\(files.count) ROM\(files.count > 1 ? "s" : "") copied: click the card, then ⌘V.")
         case .card:
             let files = selectedFiles
-            guard !files.isEmpty else { banner = "Cochez d'abord des ROM sur la carte."; return }
+            guard !files.isEmpty else { banner = L("Cochez d'abord des ROM sur la carte.", "First check some ROMs on the card."); return }
             clipboard = .cardFiles(files, folder: currentPath)
-            banner = "\(files.count) ROM copiée\(files.count > 1 ? "s" : "") : cliquez sur le panneau Mac puis ⌘V."
+            banner = L("\(files.count) ROM copiée\(files.count > 1 ? "s" : "") : cliquez sur le panneau Mac puis ⌘V.", "\(files.count) ROM\(files.count > 1 ? "s" : "") copied: click the Mac pane, then ⌘V.")
         }
     }
 
@@ -474,7 +474,7 @@ final class AppModel {
             let fromMacToCard: Bool
             if case .macFiles = clipboard { fromMacToCard = true } else { fromMacToCard = false }
             guard (fromMacToCard && activePane == .card) || (!fromMacToCard && activePane == .mac) else {
-                banner = "Cliquez d'abord sur l'autre panneau, puis ⌘V."
+                banner = L("Cliquez d'abord sur l'autre panneau, puis ⌘V.", "Click the other pane first, then ⌘V.")
                 return
             }
             pendingMove = true
@@ -502,12 +502,12 @@ final class AppModel {
                     options: [.urlReadingFileURLsOnly: true]
                 ) as? [URL] ?? []
             }
-            guard !urls.isEmpty else { banner = "Rien à coller : copiez d'abord des ROM du Mac (⌘C)."; return }
-            guard isConnected else { banner = "Branchez d'abord la SummerCart64."; return }
+            guard !urls.isEmpty else { banner = L("Rien à coller : copiez d'abord des ROM du Mac (⌘C).", "Nothing to paste: copy ROMs from the Mac first (⌘C)."); return }
+            guard isConnected else { banner = L("Branchez d'abord la SummerCart64.", "Plug in the SummerCart64 first."); return }
             enqueue(urls, move: move)
         case .mac:
             guard case .cardFiles(let files, let folder) = clipboard else {
-                banner = "Rien à coller : copiez d'abord des ROM de la carte (⌘C)."
+                banner = L("Rien à coller : copiez d'abord des ROM de la carte (⌘C).", "Nothing to paste: copy ROMs from the card first (⌘C).")
                 return
             }
             guard let destination = suggestedDownloadFolder else { return }
@@ -518,7 +518,7 @@ final class AppModel {
     /// Nom lisible : « iCloud Drive › Documents › Jeux › Nintendo 64 ».
     var downloadFolderDisplayName: String {
         _ = downloadFolderVersion
-        guard let path = suggestedDownloadFolder?.path else { return "Aucun dossier" }
+        guard let path = suggestedDownloadFolder?.path else { return L("Aucun dossier", "No folder") }
         let home = NSHomeDirectory()
         let icloud = home + "/Library/Mobile Documents/com~apple~CloudDocs"
         var display = path
@@ -592,11 +592,11 @@ final class AppModel {
     private func notifyBatch(sent: Int, received: Int, failed: Int) {
         guard sent + received + failed > 0 else { return }
         var parts: [String] = []
-        if sent > 0 { parts.append("\(sent) ROM envoyée\(sent > 1 ? "s" : "") sur la carte") }
-        if received > 0 { parts.append("\(received) fichier\(received > 1 ? "s" : "") récupéré\(received > 1 ? "s" : "") sur le Mac") }
-        if failed > 0 { parts.append("\(failed) échec\(failed > 1 ? "s" : "")") }
+        if sent > 0 { parts.append(L("\(sent) ROM envoyée\(sent > 1 ? "s" : "") sur la carte", "\(sent) ROM\(sent > 1 ? "s" : "") sent to the card")) }
+        if received > 0 { parts.append(L("\(received) fichier\(received > 1 ? "s" : "") récupéré\(received > 1 ? "s" : "") sur le Mac", "\(received) file\(received > 1 ? "s" : "") retrieved to the Mac")) }
+        if failed > 0 { parts.append(L("\(failed) échec\(failed > 1 ? "s" : "")", "\(failed) failure\(failed > 1 ? "s" : "")")) }
         Notifier.shared.post(
-            title: failed > 0 ? "Transferts terminés avec des erreurs" : "Transferts terminés",
+            title: failed > 0 ? L("Transferts terminés avec des erreurs", "Transfers finished with errors") : L("Transferts terminés", "Transfers finished"),
             body: parts.joined(separator: ", ") + "."
         )
     }
@@ -604,7 +604,7 @@ final class AppModel {
     /// « Carte SD › racine », « Carte SD › saves »…
     static func sdDisplayPath(_ path: String) -> String {
         let parts = path.split(separator: "/").map(String.init)
-        return (["Carte SD"] + (parts.isEmpty ? ["racine"] : parts)).joined(separator: " › ")
+        return ([L("Carte SD", "SD card")] + (parts.isEmpty ? [L("racine", "root")] : parts)).joined(separator: " › ")
     }
 
     var currentPathDisplay: String { Self.sdDisplayPath(currentPath) }

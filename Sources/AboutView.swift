@@ -6,10 +6,10 @@ struct AboutView: View {
     let updater: Updater
 
     private let credits: [(role: String, name: String)] = [
-        ("Idée et conception", "Titelive"),
-        ("Développement", "Titelive, avec Claude (Anthropic)"),
+        (L("Idée et conception", "Idea and design"), "Titelive"),
+        (L("Développement", "Development"), L("Titelive, avec Claude (Anthropic)", "Titelive, with Claude (Anthropic)")),
         ("SummerCart64 et sc64deployer", "Mateusz Faderewski (Polprzewodnikowy)"),
-        ("Console", "Analogue 3D, par Analogue"),
+        ("Console", L("Analogue 3D, par Analogue", "Analogue 3D, by Analogue")),
     ]
 
     var body: some View {
@@ -23,7 +23,7 @@ struct AboutView: View {
                 Text("Version \(updater.currentVersion)")
                     .font(.callout)
                     .foregroundStyle(.secondary)
-                Text("Envoyez et récupérez vos ROM N64 sur la SummerCart64.")
+                Text(L("Envoyez et récupérez vos ROM N64 sur la SummerCart64.", "Send and retrieve your N64 ROMs on the SummerCart64."))
                     .font(.callout)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
@@ -49,18 +49,18 @@ struct AboutView: View {
                 .frame(maxWidth: 360)
 
             HStack(spacing: 10) {
-                Link("Summer Drop sur GitHub", destination: URL(string: "https://github.com/Titelive/summer-drop")!)
+                Link(L("Summer Drop sur GitHub", "Summer Drop on GitHub"), destination: URL(string: "https://github.com/Titelive/summer-drop")!)
                 Text("·").foregroundStyle(.secondary)
-                Link("Projet SummerCart64", destination: URL(string: "https://github.com/Polprzewodnikowy/SummerCart64")!)
+                Link(L("Projet SummerCart64", "SummerCart64 project"), destination: URL(string: "https://github.com/Polprzewodnikowy/SummerCart64")!)
             }
             .font(.callout)
 
-            Button("Rechercher des mises à jour") {
+            Button(L("Rechercher des mises à jour", "Check for Updates")) {
                 Task { await updater.checkForUpdates(userInitiated: true) }
             }
             .buttonStyle(.glass)
 
-            Text("Summer Drop n'est affilié ni à Nintendo, ni à Analogue.")
+            Text(L("Summer Drop n'est affilié ni à Nintendo, ni à Analogue.", "Summer Drop is not affiliated with Nintendo or Analogue."))
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }
@@ -88,10 +88,10 @@ struct AppMenuCommands: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        Button("À propos de Summer Drop") {
+        Button(L("À propos de Summer Drop", "About Summer Drop")) {
             openWindow(id: "about")
         }
-        Button("Rechercher des mises à jour…") {
+        Button(L("Rechercher des mises à jour…", "Check for Updates…")) {
             Task { await Updater.shared.checkForUpdates(userInitiated: true) }
         }
     }
