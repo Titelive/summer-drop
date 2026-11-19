@@ -39,7 +39,7 @@ actor GameInfoStore {
     private var cacheDirectory: URL {
         let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
-        let dir = base.appendingPathComponent(AppLanguage.isFrench ? "SummerDrop/GameInfo" : "SummerDrop/GameInfo-en", isDirectory: true)
+        let dir = base.appendingPathComponent("SummerDrop/GameInfo/\(AppLanguage.current.rawValue)", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }
@@ -47,21 +47,22 @@ actor GameInfoStore {
     /// Renvoie la fiche (mémoire, puis disque, puis Internet).
     func info(forFileName fileName: String) async -> GameInfo {
         let romName = (fileName as NSString).deletingPathExtension
-        if let cached = memory[romName] { return cached }
+        let key = AppLanguage.current.rawValue + "|" + romName
+        if let cached = memory[key] { return cached }
 
         let file = cacheDirectory.appendingPathComponent(Self.safeFileName(romName) + ".json")
         if let data = try? Data(contentsOf: file),
            let cached = try? JSONDecoder().decode(GameInfo.self, from: data) {
-            memory[romName] = cached
+            memory[key] = cached
             return cached
         }
 
-        if let running = inFlight[romName] { return await running.value }
+        if let running = inFlight[key] { return await running.value }
         let task = Task { await Self.build(romName: romName) }
-        inFlight[romName] = task
+        inFlight[key] = task
         let info = await task.value
-        inFlight[romName] = nil
-        memory[romName] = info
+        inFlight[key] = nil
+        memory[key] = info
         // On ne met en cache disque que les fiches enrichies (sinon on réessaiera plus tard).
         if info.wikiTitle != nil, let data = try? JSONEncoder().encode(info) {
             try? data.write(to: file)
@@ -71,7 +72,7 @@ actor GameInfoStore {
 
     func clearCache() {
         memory = [:]
-        try? FileManager.default.removeItem(at: cacheDirectory)
+        try? FileManager.default.removeItem(at: cacheDirectory.deletingLastPathComponent())
     }
 
     // MARK: - Construction
@@ -112,15 +113,15 @@ actor GameInfoStore {
         var info = GameInfo(romName: romName, title: title.isEmpty ? romName : title)
 
         let regionNames: [String: String] = [
-            "Europe": "Europe", "USA": L("États-Unis", "USA"), "Japan": L("Japon", "Japan"), "France": "France",
-            "Germany": L("Allemagne", "Germany"), "Spain": L("Espagne", "Spain"), "Italy": L("Italie", "Italy"), "Australia": L("Australie", "Australia"),
-            "World": L("Monde", "World"), "Brazil": L("Brésil", "Brazil"), "Korea": L("Corée", "Korea"), "Canada": "Canada",
-            "Netherlands": L("Pays-Bas", "Netherlands"), "Sweden": L("Suède", "Sweden"), "UK": L("Royaume-Uni", "UK"), "China": L("Chine", "China"),
+            "Europe": "Europe", "USA": L("USA"), "Japan": L("Japan"), "France": "France",
+            "Germany": L("Germany"), "Spain": L("Spain"), "Italy": L("Italy"), "Australia": L("Australia"),
+            "World": L("World"), "Brazil": L("Brazil"), "Korea": L("Korea"), "Canada": "Canada",
+            "Netherlands": L("Netherlands"), "Sweden": L("Sweden"), "UK": L("UK"), "China": L("China"),
         ]
         let languageNames: [String: String] = [
-            "En": L("Anglais", "English"), "Fr": L("Français", "French"), "De": L("Allemand", "German"), "Es": L("Espagnol", "Spanish"), "It": L("Italien", "Italian"),
-            "Nl": L("Néerlandais", "Dutch"), "Ja": L("Japonais", "Japanese"), "Sv": L("Suédois", "Swedish"), "Pt": L("Portugais", "Portuguese"), "Da": L("Danois", "Danish"),
-            "Fi": L("Finnois", "Finnish"), "No": L("Norvégien", "Norwegian"), "Zh": L("Chinois", "Chinese"), "Ko": L("Coréen", "Korean"),
+            "En": L("English"), "Fr": L("French"), "De": L("German"), "Es": L("Spanish"), "It": L("Italian"),
+            "Nl": L("Dutch"), "Ja": L("Japanese"), "Sv": L("Swedish"), "Pt": L("Portuguese"), "Da": L("Danish"),
+            "Fi": L("Finnish"), "No": L("Norwegian"), "Zh": L("Chinese"), "Ko": L("Korean"),
         ]
 
         var groups: [String] = []
@@ -138,7 +139,7 @@ actor GameInfoStore {
             } else if !parts.isEmpty, parts.allSatisfy({ $0.count == 2 && languageNames[$0] != nil }) {
                 info.languages += parts.compactMap { languageNames[$0] }
             } else if group.hasPrefix("Rev ") {
-                info.revision = L("Révision ", "Revision ") + group.dropFirst(4)
+                info.revision = L("Revision {0}", String(group.dropFirst(4)))
             } else {
                 info.flags.append(group)
             }
@@ -208,12 +209,12 @@ actor GameInfoStore {
         info.wikiTitle = enTitle
 
         // 2. Données structurées Wikidata.
-        var frTitle: String?
+        var localTitle: String?
         if let qid, let entityURL = URL(string: "https://www.wikidata.org/wiki/Special:EntityData/\(qid).json"),
            let root = await json(entityURL),
            let entity = (root["entities"] as? [String: Any])?[qid] as? [String: Any] {
             let claims = entity["claims"] as? [String: Any] ?? [:]
-            frTitle = ((entity["sitelinks"] as? [String: Any])?["frwiki"] as? [String: Any])?["title"] as? String
+            localTitle = ((entity["sitelinks"] as? [String: Any])?["\(AppLanguage.current.wikiCode)wiki"] as? [String: Any])?["title"] as? String
 
             // Titres alternatifs (libellés et alias), utiles pour les noms japonais ou européens.
             var alternates: [String] = []
@@ -251,9 +252,9 @@ actor GameInfoStore {
         }
 
         // 3. Résumé, en français si l'article existe.
-        let useFrench = AppLanguage.isFrench && frTitle != nil
-        let summaryLanguage = useFrench ? "fr" : "en"
-        let summaryTitle = useFrench ? (frTitle ?? enTitle) : enTitle
+        let useLocal = AppLanguage.current != .english && localTitle != nil
+        let summaryLanguage = useLocal ? AppLanguage.current.wikiCode : "en"
+        let summaryTitle = useLocal ? (localTitle ?? enTitle) : enTitle
         if let encoded = summaryTitle.replacingOccurrences(of: " ", with: "_")
             .addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)?
             .replacingOccurrences(of: "/", with: "%2F"),
@@ -273,14 +274,14 @@ actor GameInfoStore {
         for chunk in stride(from: 0, to: ids.count, by: 50).map({ Array(ids[$0..<min($0 + 50, ids.count)]) }) {
             guard let labelsURL = url("https://www.wikidata.org/w/api.php", [
                 "action": "wbgetentities", "format": "json", "props": "labels",
-                "languages": "fr|en", "ids": chunk.joined(separator: "|"),
+                "languages": "\(AppLanguage.current.wikidataCode)|en", "ids": chunk.joined(separator: "|"),
             ]), let root = await json(labelsURL),
                   let entities = root["entities"] as? [String: Any] else { continue }
             for (id, value) in entities {
                 let labels = (value as? [String: Any])?["labels"] as? [String: Any] ?? [:]
-                let fr = (labels["fr"] as? [String: Any])?["value"] as? String
+                let local = (labels[AppLanguage.current.wikidataCode] as? [String: Any])?["value"] as? String
                 let en = (labels["en"] as? [String: Any])?["value"] as? String
-                if let label = AppLanguage.isFrench ? (fr ?? en) : (en ?? fr) { result[id] = label }
+                if let label = local ?? en { result[id] = label }
             }
         }
         return result

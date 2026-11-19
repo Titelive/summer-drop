@@ -4,15 +4,20 @@ import SwiftUI
 /// Fenêtre « À propos » avec les crédits (aussi utilisée dans l'onglet Crédits des réglages).
 struct AboutView: View {
     let updater: Updater
+    @AppStorage(AppLanguage.storageKey) private var languageSetting = AppLanguage.systemValue
 
-    private let credits: [(role: String, name: String)] = [
-        (L("Idée et conception", "Idea and design"), "Titelive"),
-        (L("Développement", "Development"), L("Titelive, avec Claude (Anthropic)", "Titelive, with Claude (Anthropic)")),
-        ("SummerCart64 et sc64deployer", "Mateusz Faderewski (Polprzewodnikowy)"),
-        ("Console", L("Analogue 3D, par Analogue", "Analogue 3D, by Analogue")),
-    ]
+    private var credits: [(role: String, name: String)] { [
+        (L("Idea and design"), "Titelive"),
+        (L("Development"), L("Titelive, with Claude (Anthropic)")),
+        (L("SummerCart64 and sc64deployer"), "Mateusz Faderewski (Polprzewodnikowy)"),
+        ("Console", L("Analogue 3D, by Analogue")),
+    ] }
 
     var body: some View {
+        content.id(languageSetting)
+    }
+
+    private var content: some View {
         VStack(spacing: 18) {
             VStack(spacing: 8) {
                 Image(nsImage: NSApp.applicationIconImage)
@@ -23,7 +28,7 @@ struct AboutView: View {
                 Text("Version \(updater.currentVersion)")
                     .font(.callout)
                     .foregroundStyle(.secondary)
-                Text(L("Envoyez et récupérez vos ROM N64 sur la SummerCart64.", "Send and retrieve your N64 ROMs on the SummerCart64."))
+                Text(L("Send and retrieve your N64 ROMs on the SummerCart64."))
                     .font(.callout)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
@@ -49,18 +54,18 @@ struct AboutView: View {
                 .frame(maxWidth: 360)
 
             HStack(spacing: 10) {
-                Link(L("Summer Drop sur GitHub", "Summer Drop on GitHub"), destination: URL(string: "https://github.com/Titelive/summer-drop")!)
+                Link(L("Summer Drop on GitHub"), destination: URL(string: "https://github.com/Titelive/summer-drop")!)
                 Text("·").foregroundStyle(.secondary)
-                Link(L("Projet SummerCart64", "SummerCart64 project"), destination: URL(string: "https://github.com/Polprzewodnikowy/SummerCart64")!)
+                Link(L("SummerCart64 project"), destination: URL(string: "https://github.com/Polprzewodnikowy/SummerCart64")!)
             }
             .font(.callout)
 
-            Button(L("Rechercher des mises à jour", "Check for Updates")) {
+            Button(L("Check for Updates")) {
                 Task { await updater.checkForUpdates(userInitiated: true) }
             }
             .buttonStyle(.glass)
 
-            Text(L("Summer Drop n'est affilié ni à Nintendo, ni à Analogue.", "Summer Drop is not affiliated with Nintendo or Analogue."))
+            Text(L("Summer Drop is not affiliated with Nintendo or Analogue."))
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }
@@ -85,13 +90,15 @@ struct AboutView: View {
 
 /// Commandes du menu de l'app : « À propos » et « Rechercher des mises à jour… ».
 struct AppMenuCommands: View {
+    /// Passed in so the menu is rebuilt when the language changes.
+    let language: String
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        Button(L("À propos de Summer Drop", "About Summer Drop")) {
+        Button(L("About Summer Drop")) {
             openWindow(id: "about")
         }
-        Button(L("Rechercher des mises à jour…", "Check for Updates…")) {
+        Button(L("Check for Updates…")) {
             Task { await Updater.shared.checkForUpdates(userInitiated: true) }
         }
     }

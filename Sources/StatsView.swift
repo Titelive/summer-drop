@@ -39,44 +39,44 @@ struct StatsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Label(L("Statistiques", "Statistics"), systemImage: "chart.bar.xaxis")
+                Label(L("Statistics"), systemImage: "chart.bar.xaxis")
                     .font(.title3.weight(.semibold))
                 Spacer()
-                Text(L("depuis le \(model.stats.since.formatted(date: .abbreviated, time: .omitted))", "since \(model.stats.since.formatted(date: .abbreviated, time: .omitted))"))
+                Text(L("since {0}", "\(model.stats.since.formatted(date: .abbreviated, time: .omitted))"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
             Grid(horizontalSpacing: 12, verticalSpacing: 12) {
                 GridRow {
-                    StatTile(title: L("ROM envoyées", "ROMs sent"), value: "\(model.stats.uploads)", systemImage: "arrow.up.circle.fill", color: .orange)
-                    StatTile(title: L("Fichiers récupérés", "Files retrieved"), value: "\(model.stats.downloads)", systemImage: "arrow.down.circle.fill", color: .blue)
+                    StatTile(title: L("ROMs sent"), value: "\(model.stats.uploads)", systemImage: "arrow.up.circle.fill", color: .orange)
+                    StatTile(title: L("Files retrieved"), value: "\(model.stats.downloads)", systemImage: "arrow.down.circle.fill", color: .blue)
                 }
                 GridRow {
-                    StatTile(title: L("Données envoyées", "Data sent"), value: Self.bytes(model.stats.bytesUp), systemImage: "externaldrive.fill.badge.plus", color: .pink)
-                    StatTile(title: L("Données récupérées", "Data retrieved"), value: Self.bytes(model.stats.bytesDown), systemImage: "internaldrive.fill", color: .purple)
+                    StatTile(title: L("Data sent"), value: Self.bytes(model.stats.bytesUp), systemImage: "externaldrive.fill.badge.plus", color: .pink)
+                    StatTile(title: L("Data retrieved"), value: Self.bytes(model.stats.bytesDown), systemImage: "internaldrive.fill", color: .purple)
                 }
                 GridRow {
-                    StatTile(title: L("Vitesse moy. d'envoi", "Avg. upload speed"), value: Self.speed(model.stats.averageUpSpeed), systemImage: "speedometer", color: .yellow)
-                    StatTile(title: L("Vitesse moy. de récupération", "Avg. retrieval speed"), value: Self.speed(model.stats.averageDownSpeed), systemImage: "gauge.with.dots.needle.67percent", color: .teal)
+                    StatTile(title: L("Avg. upload speed"), value: Self.speed(model.stats.averageUpSpeed), systemImage: "speedometer", color: .yellow)
+                    StatTile(title: L("Avg. retrieval speed"), value: Self.speed(model.stats.averageDownSpeed), systemImage: "gauge.with.dots.needle.67percent", color: .teal)
                 }
             }
 
             Divider()
 
             VStack(alignment: .leading, spacing: 8) {
-                Text(L("Dossier affiché : \(model.currentPathDisplay)", "Current folder: \(model.currentPathDisplay)"))
+                Text(L("Current folder: {0}", "\(model.currentPathDisplay)"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if model.isConnected && model.listError == nil {
                     HStack(spacing: 20) {
-                        small(L("ROM", "ROMs"), "\(model.entries.filter { $0.isROM }.count)")
-                        small(L("Dossiers", "Folders"), "\(model.entries.filter { $0.isDirectory }.count)")
-                        small(L("Autres fichiers", "Other files"), "\(model.entries.filter { !$0.isDirectory && !$0.isROM }.count)")
-                        small(L("Taille (approx.)", "Size (approx.)"), Self.bytes(model.entries.reduce(0) { $0 + $1.approxBytes }))
+                        small(L("ROMs"), "\(model.entries.filter { $0.isROM }.count)")
+                        small(L("Folders"), "\(model.entries.filter { $0.isDirectory }.count)")
+                        small(L("Other files"), "\(model.entries.filter { !$0.isDirectory && !$0.isROM }.count)")
+                        small(L("Size (approx.)"), Self.bytes(model.entries.reduce(0) { $0 + $1.approxBytes }))
                     }
                 } else {
-                    Text(L("Branchez la cartouche pour voir son contenu.", "Plug in the cartridge to see its contents."))
+                    Text(L("Plug in the cartridge to see its contents."))
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
@@ -84,13 +84,13 @@ struct StatsView: View {
 
             HStack {
                 if model.stats.failures > 0 {
-                    Text(L("\(model.stats.failures) transfert(s) en échec", "\(model.stats.failures) failed transfer(s)"))
+                    Text(L("{0} failed transfer(s)", "\(model.stats.failures)"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
                 if let last = model.stats.lastTransfer {
-                    Text(L("Dernier transfert : \(last.formatted(date: .abbreviated, time: .shortened))", "Last transfer: \(last.formatted(date: .abbreviated, time: .shortened))"))
+                    Text(L("Last transfer: {0}", "\(last.formatted(date: .abbreviated, time: .shortened))"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

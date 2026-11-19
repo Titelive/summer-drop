@@ -40,7 +40,7 @@ struct MacPanelView: View {
                             Image(systemName: "chevron.left")
                         }
                         .buttonStyle(.glass)
-                        .help(L("Dossier parent", "Parent folder"))
+                        .help(L("Parent folder"))
 
                         Button {
                             showFolderPicker = true
@@ -48,7 +48,7 @@ struct MacPanelView: View {
                             Image(systemName: "folder.badge.gearshape")
                         }
                         .buttonStyle(.glass)
-                        .help(L("Choisir un autre dossier du Mac", "Choose another Mac folder"))
+                        .help(L("Choose another Mac folder"))
 
                         Button {
                             if let folder = model.suggestedDownloadFolder {
@@ -58,7 +58,7 @@ struct MacPanelView: View {
                             Image(systemName: "macwindow")
                         }
                         .buttonStyle(.glass)
-                        .help(L("Afficher dans le Finder", "Show in Finder"))
+                        .help(L("Show in Finder"))
 
                         Button {
                             model.refreshMac()
@@ -66,7 +66,7 @@ struct MacPanelView: View {
                             Image(systemName: "arrow.clockwise")
                         }
                         .buttonStyle(.glass)
-                        .help(L("Actualiser", "Refresh"))
+                        .help(L("Refresh"))
                     }
                 }
             }
@@ -85,7 +85,7 @@ struct MacPanelView: View {
                         model.toggleSelectAllMac()
                     } label: {
                         HStack(spacing: 6) {
-                            Text(model.allMacFilesSelected ? L("Tout désélectionner", "Deselect All") : L("Tout sélectionner", "Select All"))
+                            Text(model.allMacFilesSelected ? L("Deselect All") : L("Select All"))
                             if isActive {
                                 Text("⌘A")
                                     .font(.caption.monospaced())
@@ -127,7 +127,7 @@ struct MacPanelView: View {
             }
         }
         .fileDialogDefaultDirectory(model.suggestedDownloadFolder)
-        .fileDialogConfirmationLabel(L("Choisir ce dossier", "Choose This Folder"))
+        .fileDialogConfirmationLabel(L("Choose This Folder"))
         .onAppear { model.refreshMac() }
     }
 
@@ -152,11 +152,11 @@ struct MacPanelView: View {
     @ViewBuilder
     private var list: some View {
         if model.suggestedDownloadFolder == nil {
-            placeholder("questionmark.folder", L("Aucun dossier", "No folder"), L("Choisissez un dossier du Mac.", "Choose a Mac folder."))
+            placeholder("questionmark.folder", L("No folder"), L("Choose a Mac folder."))
         } else if model.macEntries.isEmpty {
-            placeholder("tray", L("Aucune ROM ici", "No ROMs here"), L("Glissez des ROM de la carte ici pour les récupérer.", "Drag ROMs from the card here to retrieve them."))
+            placeholder("tray", L("No ROMs here"), L("Drag ROMs from the card here to retrieve them."))
         } else if model.visibleMacEntries.isEmpty {
-            placeholder("magnifyingglass", L("Aucun résultat", "No results"), L("Rien ne correspond à « \(model.searchText) ».", "Nothing matches “\(model.searchText)”."))
+            placeholder("magnifyingglass", L("No results"), L("Nothing matches “{0}”.", "\(model.searchText)"))
         } else {
             ScrollView {
                 LazyVStack(spacing: 4) {
@@ -171,15 +171,15 @@ struct MacPanelView: View {
                             .onDrag { dragProvider(for: item) }
                             .contextMenu {
                                 if item.entry.isDirectory {
-                                    Button(L("Ouvrir", "Open")) { model.openMac(item) }
+                                    Button(L("Open")) { model.openMac(item) }
                                 } else {
-                                    Button(L("Envoyer sur la cartouche", "Send to the cartridge")) {
+                                    Button(L("Send to the cartridge")) {
                                         let selected = model.selectedMacFiles
                                         model.enqueue(selected.contains(item.url) ? selected : [item.url])
                                     }
                                     .disabled(!model.isConnected)
                                 }
-                                Button(L("Afficher dans le Finder", "Show in Finder")) {
+                                Button(L("Show in Finder")) {
                                     NSWorkspace.shared.activateFileViewerSelecting([item.url])
                                 }
                             }
@@ -207,12 +207,12 @@ struct MacPanelView: View {
             HStack(spacing: 8) {
                 Image(systemName: "sdcard")
                     .foregroundStyle(.orange)
-                Text(L("Envoyer sur la cartouche", "Send to the cartridge"))
+                Text(L("Send to the cartridge"))
                     .font(.subheadline.weight(.semibold))
                 Spacer()
                 Text(count == 0
-                     ? L("Cochez des ROM ou glissez-les à droite", "Check ROMs or drag them to the right")
-                     : L("\(count) ROM sélectionnée\(count > 1 ? "s" : "")", "\(count) ROM\(count > 1 ? "s" : "") selected"))
+                     ? L("Check ROMs or drag them to the right")
+                     : L("{0} ROM{1} selected", "\(count)", "\(count > 1 ? "s" : "")"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -227,11 +227,11 @@ struct MacPanelView: View {
                 Button {
                     model.sendSelectedMacFiles()
                 } label: {
-                    Label(count == 0 ? L("Envoyer", "Send") : L("Envoyer (\(count))", "Send (\(count))"), systemImage: "arrow.up.to.line")
+                    Label(count == 0 ? L("Send") : L("Send ({0})", "\(count)"), systemImage: "arrow.up.to.line")
                 }
                 .buttonStyle(.glassProminent)
                 .disabled(count == 0 || !model.isConnected)
-                .help(model.isConnected ? L("Copier les ROM cochées sur la carte", "Copy the checked ROMs to the card") : L("Branchez d'abord la SummerCart64", "Plug in the SummerCart64 first"))
+                .help(model.isConnected ? L("Copy the checked ROMs to the card") : L("Plug in the SummerCart64 first"))
             }
         }
         .padding(14)

@@ -23,6 +23,7 @@ struct SummerDropApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var model = AppModel()
     @State private var updater = Updater.shared
+    @AppStorage(AppLanguage.storageKey) private var languageSetting = AppLanguage.systemValue
 
     var body: some Scene {
         Window("Summer Drop", id: "main") {
@@ -41,16 +42,16 @@ struct SummerDropApp: App {
         }
         .commands {
             CommandGroup(replacing: .appInfo) {
-                AppMenuCommands()
+                AppMenuCommands(language: languageSetting)
             }
             CommandGroup(replacing: .help) {
-                Button(L("Revoir le tutoriel", "Show the Tutorial Again")) { model.showOnboarding = true }
+                Button(L("Show the Tutorial Again")) { model.showOnboarding = true }
                 Divider()
-                Link(L("Summer Drop sur GitHub", "Summer Drop on GitHub"), destination: URL(string: "https://github.com/Titelive/summer-drop")!)
+                Link(L("Summer Drop on GitHub"), destination: URL(string: "https://github.com/Titelive/summer-drop")!)
             }
         }
 
-        Window(L("À propos de Summer Drop", "About Summer Drop"), id: "about") {
+        Window(L("About Summer Drop"), id: "about") {
             AboutView(updater: updater)
         }
         .windowResizability(.contentSize)

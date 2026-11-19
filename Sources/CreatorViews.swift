@@ -34,7 +34,7 @@ struct CreatorPill: View {
             openURL(Creator.servicesURL)
         } label: {
             PillLabel {
-                Text(L("Créé par", "Made by"))
+                Text(L("Made by"))
                     .foregroundStyle(.secondary)
                 Group {
                     if let avatar = Creator.avatar {
@@ -54,7 +54,7 @@ struct CreatorPill: View {
         }
         .buttonStyle(.plain)
         .glassEffect(Glass.regular.interactive(), in: .capsule)
-        .help(L("Découvrir les prestations de \(Creator.name)", "Discover \(Creator.name)'s services"))
+        .help(L("Discover {0}'s services", "\(Creator.name)"))
     }
 }
 
@@ -70,13 +70,13 @@ struct CoffeeButton: View {
                 Image(systemName: "cup.and.saucer.fill")
                     .foregroundStyle(.yellow)
                     .frame(width: 20, height: 20)
-                Text(L("Offrir un café", "Buy me a coffee"))
+                Text(L("Buy me a coffee"))
                     .fontWeight(.semibold)
             }
         }
         .buttonStyle(.plain)
         .glassEffect(Glass.regular.interactive(), in: .capsule)
-        .help(L("Soutenir \(Creator.name) sur Buy Me a Coffee", "Support \(Creator.name) on Buy Me a Coffee"))
+        .help(L("Support {0} on Buy Me a Coffee", "\(Creator.name)"))
     }
 }
 
