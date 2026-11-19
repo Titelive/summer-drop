@@ -968,6 +968,14 @@ struct SDEntryRow: View {
                     nameHovered = inside
                     updateHover()
                 }
+            if entry.isSystemFile {
+                Text(L("SC64 menu"))
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.purple)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2)
+                    .background(Color.purple.opacity(0.18), in: .capsule)
+            }
             Spacer(minLength: 6)
             // Fixed slot for the stars: giving a rating never changes the name's width.
             if entry.isROM {
@@ -1003,17 +1011,21 @@ struct SDEntryRow: View {
                     updateHover()
                 }
         }
-        .help(entry.isDirectory ? L("Double-click to open") : L("Click to check, then “Retrieve” below"))
+        .help(entry.isDirectory ? L("Double-click to open")
+              : entry.isSystemFile ? L("The SummerCart64 menu, not a game. Keep it at the root of the SD card.")
+              : L("Click to check, then “Retrieve” below"))
     }
 
     private var iconName: String {
         if entry.isDirectory { return "folder.fill" }
+        if entry.isSystemFile { return "memorychip.fill" }
         if entry.isROM { return "gamecontroller.fill" }
         return "doc"
     }
 
     private var iconColor: Color {
         if entry.isDirectory { return .blue }
+        if entry.isSystemFile { return .purple }
         if entry.isROM { return .orange }
         return .secondary
     }

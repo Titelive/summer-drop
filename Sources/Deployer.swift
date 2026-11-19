@@ -19,7 +19,12 @@ struct SDEntry: Identifiable, Hashable, Sendable {
 
     var isROM: Bool {
         let ext = (name as NSString).pathExtension.lowercased()
-        return ["z64", "n64", "v64", "ndd"].contains(ext)
+        return ["z64", "n64", "v64", "ndd"].contains(ext) && !isSystemFile
+    }
+
+    /// The SummerCart64 menu (N64FlashcartMenu), not a game.
+    var isSystemFile: Bool {
+        !isDirectory && name.lowercased() == "sc64menu.n64"
     }
 }
 

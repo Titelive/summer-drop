@@ -266,5 +266,8 @@
  "Summer Drop {0} is ready: restart the app to install it.": "Summer Drop {0} の準備ができました。アプリを再起動してインストールしてください。",
  "The disk image contains no app.": "ディスクイメージにアプリが含まれていません。",
  "The downloaded app is not Summer Drop.": "ダウンロードしたアプリは Summer Drop ではありません。",
- "{0} failed.": "{0} に失敗しました。"
+ "{0} failed.": "{0} に失敗しました。",
+ "SC64 menu": "SC64 メニュー",
+ "The SummerCart64 menu, not a game. Keep it at the root of the SD card.": "SummerCart64 のメニューで、ゲームではありません。SD カードのルートに置いたままにしてください。",
+ "The SC64 menu can't be moved off the card. Uncheck sc64menu.n64, or copy it with ⌘C.": "SC64 メニューはカードから移動できません。sc64menu.n64 のチェックを外すか、⌘C でコピーしてください。"
 }

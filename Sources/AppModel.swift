@@ -440,6 +440,12 @@ final class AppModel {
     func cutFromActivePane() {
         copyFromActivePane()
         guard clipboard != .empty else { return }
+        // The SC64 menu must stay on the card: it can be copied, never moved off.
+        if case .cardFiles(let files, _) = clipboard, files.contains(where: \.isSystemFile) {
+            clipboardIsCut = false
+            banner = L("The SC64 menu can't be moved off the card. Uncheck sc64menu.n64, or copy it with ⌘C.")
+            return
+        }
         clipboardIsCut = true
         let count: Int
         switch clipboard {
