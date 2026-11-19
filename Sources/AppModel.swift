@@ -47,6 +47,8 @@ final class AppModel {
 
     var queue: [UploadItem] = []
     var selection: Set<String> = []
+    /// Incrémenté quand le dossier de téléchargement change, pour rafraîchir l'affichage.
+    var downloadFolderVersion = 0
     var isUploading = false
     var currentFileProgress: Double = 0
 
@@ -220,12 +222,46 @@ final class AppModel {
         }
     }
 
+    var allFilesSelected: Bool {
+        let files = entries.filter { !$0.isDirectory }
+        return !files.isEmpty && files.allSatisfy { selection.contains($0.name) }
+    }
+
+    func toggleSelectAll() {
+        if allFilesSelected {
+            selection = []
+        } else {
+            selection = Set(entries.filter { !$0.isDirectory }.map(\.name))
+        }
+    }
+
+    func setDownloadFolder(_ folder: URL) {
+        UserDefaults.standard.set(folder.path, forKey: Self.lastDownloadFolderKey)
+        downloadFolderVersion += 1
+    }
+
+    /// Nom lisible : « iCloud Drive › Documents › Jeux › Nintendo 64 ».
+    var downloadFolderDisplayName: String {
+        _ = downloadFolderVersion
+        guard let path = suggestedDownloadFolder?.path else { return "Aucun dossier" }
+        let home = NSHomeDirectory()
+        let icloud = home + "/Library/Mobile Documents/com~apple~CloudDocs"
+        var display = path
+        if display.hasPrefix(icloud) {
+            display = "iCloud Drive" + display.dropFirst(icloud.count)
+        } else if display.hasPrefix(home) {
+            display = "~" + display.dropFirst(home.count)
+        }
+        return display.split(separator: "/").joined(separator: " › ")
+    }
+
     var selectedFiles: [SDEntry] {
         entries.filter { !$0.isDirectory && selection.contains($0.name) }
     }
 
     /// Dossier proposé par défaut : le dernier utilisé, sinon « Jeux/Nintendo 64 » sur iCloud.
     var suggestedDownloadFolder: URL? {
+        _ = downloadFolderVersion
         let fm = FileManager.default
         if let last = UserDefaults.standard.string(forKey: Self.lastDownloadFolderKey),
            fm.fileExists(atPath: last) {
@@ -239,7 +275,7 @@ final class AppModel {
 
     func download(_ files: [SDEntry], to folder: URL) {
         let fm = FileManager.default
-        UserDefaults.standard.set(folder.path, forKey: Self.lastDownloadFolderKey)
+        setDownloadFolder(folder)
         var reserved = Set<String>()
         for entry in files where !entry.isDirectory {
             let source = Self.join(currentPath, entry.name)

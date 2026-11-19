@@ -324,7 +324,7 @@ struct DropZone: View {
             Text(isTargeted ? "Lâchez pour envoyer" : "Déposez vos ROM ici")
                 .font(.title3.weight(.semibold))
                 .contentTransition(.interpolate)
-            Text("Destination : \(model.currentPath)")
+            Text("Du Mac vers la carte · destination : \(model.currentPath)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Button {
@@ -513,12 +513,11 @@ struct UploadRow: View {
 struct SDCardView: View {
     let model: AppModel
     @State private var showFolderPicker = false
-    @State private var pendingDownload: [SDEntry] = []
 
-    private func askDownload(_ files: [SDEntry]) {
-        guard !files.isEmpty else { return }
-        pendingDownload = files
-        showFolderPicker = true
+    /// Récupère directement dans le dossier de destination affiché en bas du panneau.
+    private func retrieve(_ files: [SDEntry]) {
+        guard !files.isEmpty, let folder = model.suggestedDownloadFolder else { return }
+        model.download(files, to: folder)
     }
 
     var body: some View {
@@ -531,16 +530,6 @@ struct SDCardView: View {
                 Spacer()
                 GlassEffectContainer(spacing: 8) {
                     HStack(spacing: 8) {
-                        if !model.selectedFiles.isEmpty {
-                            Button {
-                                askDownload(model.selectedFiles)
-                            } label: {
-                                Label("Télécharger (\(model.selectedFiles.count))", systemImage: "arrow.down.to.line")
-                            }
-                            .buttonStyle(.glassProminent)
-                            .help("Copier les fichiers sélectionnés sur le Mac")
-                        }
-
                         Button {
                             model.goUp()
                         } label: {
@@ -577,27 +566,76 @@ struct SDCardView: View {
                     .font(.callout.monospaced())
                     .foregroundStyle(.secondary)
                 Spacer()
-                if model.isConnected && model.listError == nil && !model.entries.isEmpty {
-                    Text("Clic : sélectionner · double-clic : ouvrir un dossier")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
+                if model.isConnected && model.listError == nil && model.entries.contains(where: { !$0.isDirectory }) {
+                    Button(model.allFilesSelected ? "Tout désélectionner" : "Tout sélectionner") {
+                        model.toggleSelectAll()
+                    }
+                    .buttonStyle(.glass)
+                    .controlSize(.small)
                 }
             }
 
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            if model.isConnected {
+                retrieveBar
+            }
         }
         .padding(18)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .glassEffect(.regular, in: .rect(cornerRadius: 24))
         .fileImporter(isPresented: $showFolderPicker, allowedContentTypes: [.folder], allowsMultipleSelection: false) { result in
             if case .success(let urls) = result, let folder = urls.first {
-                model.download(pendingDownload, to: folder)
+                model.setDownloadFolder(folder)
             }
-            pendingDownload = []
         }
         .fileDialogDefaultDirectory(model.suggestedDownloadFolder)
-        .fileDialogConfirmationLabel("Télécharger ici")
+        .fileDialogConfirmationLabel("Choisir ce dossier")
+    }
+
+    /// Barre « De la carte vers le Mac », symétrique de la zone de dépôt.
+    private var retrieveBar: some View {
+        let count = model.selectedFiles.count
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "laptopcomputer.and.arrow.down")
+                    .foregroundStyle(.blue)
+                Text("Récupérer sur le Mac")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Text(count == 0
+                     ? "Cochez des ROM dans la liste"
+                     : "\(count) fichier\(count > 1 ? "s" : "") sélectionné\(count > 1 ? "s" : "")")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .contentTransition(.numericText())
+            }
+            HStack(spacing: 10) {
+                Image(systemName: "folder.fill")
+                    .foregroundStyle(.blue)
+                Text(model.downloadFolderDisplayName)
+                    .font(.callout)
+                    .lineLimit(1)
+                    .truncationMode(.head)
+                    .help(model.suggestedDownloadFolder?.path ?? "")
+                Button("Changer…") { showFolderPicker = true }
+                    .buttonStyle(.glass)
+                    .controlSize(.small)
+                Spacer()
+                Button {
+                    retrieve(model.selectedFiles)
+                } label: {
+                    Label(count == 0 ? "Récupérer" : "Récupérer (\(count))", systemImage: "arrow.down.to.line")
+                }
+                .buttonStyle(.glassProminent)
+                .disabled(count == 0)
+                .help(count == 0 ? "Cochez d'abord des ROM dans la liste" : "Copier les fichiers cochés dans ce dossier du Mac")
+            }
+        }
+        .padding(14)
+        .glassEffect(Glass.regular.tint(Color.blue.opacity(count > 0 ? 0.18 : 0.06)), in: .rect(cornerRadius: 18))
+        .animation(.spring(duration: 0.35), value: count)
     }
 
     @ViewBuilder
@@ -628,9 +666,9 @@ struct SDCardView: View {
                                 if entry.isDirectory {
                                     Button("Ouvrir") { model.open(entry) }
                                 } else {
-                                    Button("Télécharger sur le Mac…") {
+                                    Button("Récupérer sur le Mac") {
                                         let selected = model.selectedFiles
-                                        askDownload(selected.contains(entry) ? selected : [entry])
+                                        retrieve(selected.contains(entry) ? selected : [entry])
                                     }
                                 }
                             }
@@ -662,6 +700,19 @@ struct SDEntryRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
+            // Case à cocher visible pour les fichiers (les dossiers s'ouvrent au double-clic).
+            Group {
+                if entry.isDirectory {
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                } else {
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+                        .contentTransition(.symbolEffect(.replace))
+                }
+            }
+            .frame(width: 18)
             Image(systemName: iconName)
                 .foregroundStyle(iconColor)
                 .frame(width: 22)
@@ -689,7 +740,7 @@ struct SDEntryRow: View {
                 .strokeBorder(Color.white.opacity(isSelected ? 0.6 : 0), lineWidth: 1)
         )
         .animation(.easeOut(duration: 0.15), value: isSelected)
-        .help(entry.isDirectory ? "Double-cliquez pour ouvrir" : "Cliquez pour sélectionner, clic droit pour télécharger")
+        .help(entry.isDirectory ? "Double-cliquez pour ouvrir" : "Cliquez pour cocher, puis « Récupérer » en bas")
     }
 
     private var iconName: String {

@@ -126,6 +126,9 @@ struct GeneralSettings: View {
         .onChange(of: appearance) { _, newValue in
             newValue.apply()
         }
+        .onChange(of: downloadFolder) { _, _ in
+            model.downloadFolderVersion += 1
+        }
     }
 
     private var folderLabel: String {

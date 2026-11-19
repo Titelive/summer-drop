@@ -10,7 +10,7 @@ Elle remplace « SC64 Envoi » (version 1, script bash + boîtes de dialogue App
 - **Contenu de la carte SD** : liste des fichiers et dossiers, double-clic pour ouvrir un dossier, flèche pour remonter, bouton pour actualiser.
 - **Progression** : barre par fichier et barre totale.
 - **État de la cartouche** : pastille verte / rouge, vérifiée toutes les 3 secondes.
-- **Récupération** : cliquez sur des fichiers de la carte pour les sélectionner, puis **Télécharger** (ou clic droit) pour les copier sur le Mac. Un fichier existant n'est jamais écrasé.
+- **Récupération** : cochez des ROM dans la liste de la carte (ou « Tout sélectionner »), puis **Récupérer** en bas du panneau. Elles arrivent dans le dossier affiché (par défaut `iCloud Drive/Documents/Jeux/Nintendo 64`), modifiable avec « Changer… ». Un fichier existant n'est jamais écrasé.
 - **Réglages** (⌘,) : thème Automatique / Clair / Sombre, dossier de téléchargement, emplacement de `sc64deployer`, mises à jour, statistiques.
 - **Statistiques** : ROM envoyées et récupérées, volumes, vitesses moyennes, contenu du dossier affiché. Tout reste sur le Mac.
 - **À propos** : crédits, recherche manuelle de mises à jour.
