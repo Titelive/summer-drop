@@ -677,6 +677,8 @@ struct SDCardView: View {
                         .disabled(model.currentPath == "/" || model.isLoadingList || model.isUploading)
                         .help(L("Parent folder"))
 
+                        SortMenu(options: Binding(get: { model.cardSort }, set: { model.cardSort = $0 }))
+
                         Button {
                             Task { await model.refreshList() }
                         } label: {
@@ -867,11 +869,14 @@ struct SDCardView: View {
         } else {
             ScrollView {
                 LazyVStack(spacing: 4) {
-                    ForEach(Array(model.visibleEntries.enumerated()), id: \.element.id) { index, entry in
+                    ForEach(model.cardSections) { section in
+                        if let title = section.title {
+                            SectionHeader(title: title, count: section.items.count)
+                        }
+                        ForEach(section.items) { entry in
                         SDEntryRow(entry: entry, isSelected: model.selection.contains(entry.name))
                             .contentShape(Rectangle())
                             .transition(.opacity.combined(with: .offset(y: 8)))
-                            .animation(.spring(duration: 0.4).delay(Double(min(index, 12)) * 0.025), value: model.visibleEntries)
                             .onTapGesture(count: 2) { model.open(entry) }
                             .onTapGesture(count: 1) {
                                 model.activePane = .card
@@ -888,9 +893,11 @@ struct SDCardView: View {
                                     }
                                 }
                             }
+                        }
                     }
                 }
                 .padding(.vertical, 6)
+                .animation(.spring(duration: 0.4), value: model.cardSort)
             }
             .softEdges()
         }

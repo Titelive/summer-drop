@@ -81,6 +81,20 @@ final class AppModel {
     /// Demande de confirmation avant un déplacement (⌘X puis ⌘V).
     var pendingMove = false
 
+    /// Tri et regroupement de chaque panneau (gardés entre les lancements).
+    var cardSort = SortOptions.load("sort.card") { didSet { cardSort.save("sort.card") } }
+    var macSort = SortOptions.load("sort.mac") { didSet { macSort.save("sort.mac") } }
+
+    /// Entrées de la carte, triées et groupées.
+    var cardSections: [ListSection<SDEntry>] {
+        ListArranger.arrange(visibleEntries, options: cardSort) { $0 }
+    }
+
+    /// Entrées du Mac, triées et groupées.
+    var macSections: [ListSection<MacEntry>] {
+        ListArranger.arrange(visibleMacEntries, options: macSort) { $0.entry }
+    }
+
     /// Entrées affichées, filtrées par la recherche.
     var visibleEntries: [SDEntry] {
         let query = searchText.trimmingCharacters(in: .whitespaces)

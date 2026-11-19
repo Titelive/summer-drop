@@ -50,6 +50,8 @@ struct MacPanelView: View {
                         .buttonStyle(.glass)
                         .help(L("Choose another Mac folder"))
 
+                        SortMenu(options: Binding(get: { model.macSort }, set: { model.macSort = $0 }))
+
                         Button {
                             if let folder = model.suggestedDownloadFolder {
                                 NSWorkspace.shared.activateFileViewerSelecting([folder])
@@ -160,7 +162,11 @@ struct MacPanelView: View {
         } else {
             ScrollView {
                 LazyVStack(spacing: 4) {
-                    ForEach(model.visibleMacEntries) { item in
+                    ForEach(model.macSections) { section in
+                        if let title = section.title {
+                            SectionHeader(title: title, count: section.items.count)
+                        }
+                        ForEach(section.items) { item in
                         SDEntryRow(entry: item.entry, isSelected: model.macSelection.contains(item.url))
                             .contentShape(Rectangle())
                             .onTapGesture(count: 2) { model.openMac(item) }
@@ -183,9 +189,11 @@ struct MacPanelView: View {
                                     NSWorkspace.shared.activateFileViewerSelecting([item.url])
                                 }
                             }
+                        }
                     }
                 }
                 .padding(.vertical, 6)
+                .animation(.spring(duration: 0.4), value: model.macSort)
             }
             .softEdges()
         }
