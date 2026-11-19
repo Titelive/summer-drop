@@ -51,6 +51,7 @@ struct MacPanelView: View {
                         .help(L("Choose another Mac folder"))
 
                         SortMenu(options: Binding(get: { model.macSort }, set: { model.macSort = $0 }))
+                        ViewModeButton(mode: Binding(get: { model.macViewMode }, set: { model.macViewMode = $0 }))
 
                         Button {
                             if let folder = model.suggestedDownloadFolder {
@@ -159,6 +160,31 @@ struct MacPanelView: View {
             placeholder("tray", L("No ROMs here"), L("Drag ROMs from the card here to retrieve them."))
         } else if model.visibleMacEntries.isEmpty {
             placeholder("magnifyingglass", L("No results"), L("Nothing matches “{0}”.", "\(model.searchText)"))
+        } else if model.macViewMode == .icons {
+            EntryGrid(
+                sections: model.macSections,
+                entry: { $0.entry },
+                isSelected: { model.macSelection.contains($0.url) },
+                onTap: { item in
+                    model.activePane = .mac
+                    model.toggleMacSelection(item)
+                },
+                onOpen: { model.openMac($0) },
+                onDrag: { dragProvider(for: $0) }
+            ) { item in
+                if item.entry.isDirectory {
+                    Button(L("Open")) { model.openMac(item) }
+                } else {
+                    Button(L("Send to the cartridge")) {
+                        let selected = model.selectedMacFiles
+                        model.enqueue(selected.contains(item.url) ? selected : [item.url])
+                    }
+                    .disabled(!model.isConnected)
+                }
+                Button(L("Show in Finder")) {
+                    NSWorkspace.shared.activateFileViewerSelecting([item.url])
+                }
+            }
         } else {
             ScrollView {
                 LazyVStack(spacing: 4) {

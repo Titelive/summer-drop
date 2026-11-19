@@ -84,6 +84,9 @@ final class AppModel {
     /// Tri et regroupement de chaque panneau (gardés entre les lancements).
     var cardSort = SortOptions.load("sort.card") { didSet { cardSort.save("sort.card") } }
     var macSort = SortOptions.load("sort.mac") { didSet { macSort.save("sort.mac") } }
+    /// Liste ou icônes, pour chaque panneau.
+    var cardViewMode = ViewMode.load("view.card") { didSet { UserDefaults.standard.set(cardViewMode.rawValue, forKey: "view.card") } }
+    var macViewMode = ViewMode.load("view.mac") { didSet { UserDefaults.standard.set(macViewMode.rawValue, forKey: "view.mac") } }
 
     /// Entrées de la carte, triées et groupées.
     var cardSections: [ListSection<SDEntry>] {

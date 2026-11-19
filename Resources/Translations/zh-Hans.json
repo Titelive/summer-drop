@@ -269,5 +269,7 @@
  "{0} failed.": "{0} 失败。",
  "SC64 menu": "SC64 菜单",
  "The SummerCart64 menu, not a game. Keep it at the root of the SD card.": "这是 SummerCart64 的菜单，不是游戏。请将它保留在 SD 卡的根目录。",
- "The SC64 menu can't be moved off the card. Uncheck sc64menu.n64, or copy it with ⌘C.": "SC64 菜单不能移出存储卡。请取消勾选 sc64menu.n64，或用 ⌘C 拷贝。"
+ "The SC64 menu can't be moved off the card. Uncheck sc64menu.n64, or copy it with ⌘C.": "SC64 菜单不能移出存储卡。请取消勾选 sc64menu.n64，或用 ⌘C 拷贝。",
+ "Show as Icons": "以图标显示",
+ "Show as List": "以列表显示"
 }

@@ -678,6 +678,7 @@ struct SDCardView: View {
                         .help(L("Parent folder"))
 
                         SortMenu(options: Binding(get: { model.cardSort }, set: { model.cardSort = $0 }))
+                        ViewModeButton(mode: Binding(get: { model.cardViewMode }, set: { model.cardViewMode = $0 }))
 
                         Button {
                             Task { await model.refreshList() }
@@ -866,6 +867,27 @@ struct SDCardView: View {
             placeholder(systemImage: "magnifyingglass", title: L("No results"), detail: L("No file in this folder contains “{0}”.", "\(model.searchText)"))
         } else if model.entries.isEmpty {
             placeholder(systemImage: "tray", title: L("Empty folder"), detail: L("Drag ROMs here from the Mac pane or the Finder."))
+        } else if model.cardViewMode == .icons {
+            EntryGrid(
+                sections: model.cardSections,
+                entry: { $0 },
+                isSelected: { model.selection.contains($0.name) },
+                onTap: { entry in
+                    model.activePane = .card
+                    model.toggleSelection(entry)
+                },
+                onOpen: { model.open($0) },
+                onDrag: { dragProvider(for: $0) }
+            ) { entry in
+                if entry.isDirectory {
+                    Button(L("Open")) { model.open(entry) }
+                } else {
+                    Button(L("Retrieve to the Mac")) {
+                        let selected = model.selectedFiles
+                        retrieve(selected.contains(entry) ? selected : [entry])
+                    }
+                }
+            }
         } else {
             ScrollView {
                 LazyVStack(spacing: 4) {

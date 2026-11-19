@@ -269,5 +269,7 @@
  "{0} failed.": "{0} に失敗しました。",
  "SC64 menu": "SC64 メニュー",
  "The SummerCart64 menu, not a game. Keep it at the root of the SD card.": "SummerCart64 のメニューで、ゲームではありません。SD カードのルートに置いたままにしてください。",
- "The SC64 menu can't be moved off the card. Uncheck sc64menu.n64, or copy it with ⌘C.": "SC64 メニューはカードから移動できません。sc64menu.n64 のチェックを外すか、⌘C でコピーしてください。"
+ "The SC64 menu can't be moved off the card. Uncheck sc64menu.n64, or copy it with ⌘C.": "SC64 メニューはカードから移動できません。sc64menu.n64 のチェックを外すか、⌘C でコピーしてください。",
+ "Show as Icons": "アイコンで表示",
+ "Show as List": "リストで表示"
 }

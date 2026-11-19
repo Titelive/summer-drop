@@ -269,5 +269,7 @@
  "{0} failed.": "{0} non riuscito.",
  "SC64 menu": "Menu SC64",
  "The SummerCart64 menu, not a game. Keep it at the root of the SD card.": "Il menu della SummerCart64, non un gioco. Lascialo nella radice della scheda SD.",
- "The SC64 menu can't be moved off the card. Uncheck sc64menu.n64, or copy it with ⌘C.": "Il menu SC64 non può lasciare la scheda. Deseleziona sc64menu.n64 o copialo con ⌘C."
+ "The SC64 menu can't be moved off the card. Uncheck sc64menu.n64, or copy it with ⌘C.": "Il menu SC64 non può lasciare la scheda. Deseleziona sc64menu.n64 o copialo con ⌘C.",
+ "Show as Icons": "Mostra come icone",
+ "Show as List": "Mostra come elenco"
 }

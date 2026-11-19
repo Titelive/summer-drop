@@ -70,7 +70,35 @@ actor GameInfoStore {
         return info
     }
 
+    private var boxartMemo: [String: URL?] = [:]
+
+    /// Box art only (for the icon view): quicker than a full card, no Wikipedia call
+    /// unless the card is already cached.
+    func boxartURL(forFileName fileName: String) async -> URL? {
+        let romName = (fileName as NSString).deletingPathExtension
+        if let memo = boxartMemo[romName] { return memo }
+        let key = AppLanguage.current.rawValue + "|" + romName
+        if let cached = memory[key] { return cached.boxartURL }
+        let file = cacheDirectory.appendingPathComponent(Self.safeFileName(romName) + ".json")
+        if let data = try? Data(contentsOf: file),
+           let cached = try? JSONDecoder().decode(GameInfo.self, from: data) {
+            memory[key] = cached
+            return cached.boxartURL
+        }
+        guard let names = await ThumbnailIndex.shared.load() else { return nil }
+        let match = await ThumbnailIndex.shared.bestMatch(
+            romName: romName, alternateTitles: [], regions: Self.parseRegionKeys(romName)
+        )
+        var url: URL?
+        if let match, names.boxarts.contains(match.name) {
+            url = Self.thumbnailURL(kind: "Named_Boxarts", romName: match.name)
+        }
+        boxartMemo[romName] = .some(url)
+        return url
+    }
+
     func clearCache() {
+        boxartMemo = [:]
         memory = [:]
         try? FileManager.default.removeItem(at: cacheDirectory.deletingLastPathComponent())
     }
