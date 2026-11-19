@@ -18,6 +18,11 @@ struct GameInfo: Codable, Sendable, Equatable {
     var genres: [String] = []
     var wikipediaURL: URL?
 
+    /// Titres alternatifs (Wikidata) : aident à retrouver les images.
+    var alternateTitles: [String] = []
+    /// Vrai si l'image a été trouvée grâce à l'IA d'Apple.
+    var imagesFoundByAI = false
+
     var boxartURL: URL?
     var titleScreenURL: URL?
     var snapURL: URL?
@@ -73,10 +78,28 @@ actor GameInfoStore {
 
     static func build(romName: String) async -> GameInfo {
         var info = parse(romName: romName)
-        info.boxartURL = thumbnailURL(kind: "Named_Boxarts", romName: romName)
-        info.titleScreenURL = thumbnailURL(kind: "Named_Titles", romName: romName)
-        info.snapURL = thumbnailURL(kind: "Named_Snaps", romName: romName)
         await enrichFromWikipedia(&info)
+
+        // Images : seulement celles qui existent vraiment (plus de cases vides).
+        if let names = await ThumbnailIndex.shared.load() {
+            let regionKeys = parseRegionKeys(romName)
+            let result = await ThumbnailIndex.shared.bestMatch(
+                romName: romName,
+                alternateTitles: info.alternateTitles + [info.wikiTitle].compactMap { $0 }.map(ThumbnailIndex.baseTitle),
+                regions: regionKeys
+            )
+            if let (match, viaAI) = result {
+                info.imagesFoundByAI = viaAI
+                if names.boxarts.contains(match) { info.boxartURL = thumbnailURL(kind: "Named_Boxarts", romName: match) }
+                if names.titles.contains(match) { info.titleScreenURL = thumbnailURL(kind: "Named_Titles", romName: match) }
+                if names.snaps.contains(match) { info.snapURL = thumbnailURL(kind: "Named_Snaps", romName: match) }
+            }
+        } else {
+            // Index indisponible : on tente le nom exact.
+            info.boxartURL = thumbnailURL(kind: "Named_Boxarts", romName: romName)
+            info.titleScreenURL = thumbnailURL(kind: "Named_Titles", romName: romName)
+            info.snapURL = thumbnailURL(kind: "Named_Snaps", romName: romName)
+        }
         return info
     }
 
@@ -121,6 +144,12 @@ actor GameInfoStore {
             }
         }
         return info
+    }
+
+    /// Régions en anglais (telles qu'écrites dans les noms No-Intro).
+    static func parseRegionKeys(_ romName: String) -> [String] {
+        let known = ["Europe", "USA", "Japan", "France", "Germany", "Spain", "Italy", "Australia", "World"]
+        return known.filter { romName.contains($0) }
     }
 
     /// Les vignettes libretro remplacent &*/:`<>?\|" par « _ ».
@@ -185,6 +214,18 @@ actor GameInfoStore {
            let entity = (root["entities"] as? [String: Any])?[qid] as? [String: Any] {
             let claims = entity["claims"] as? [String: Any] ?? [:]
             frTitle = ((entity["sitelinks"] as? [String: Any])?["frwiki"] as? [String: Any])?["title"] as? String
+
+            // Titres alternatifs (libellés et alias), utiles pour les noms japonais ou européens.
+            var alternates: [String] = []
+            for (_, value) in entity["labels"] as? [String: Any] ?? [:] {
+                if let label = (value as? [String: Any])?["value"] as? String { alternates.append(label) }
+            }
+            for (_, list) in entity["aliases"] as? [String: Any] ?? [:] {
+                for alias in list as? [[String: Any]] ?? [] {
+                    if let value = alias["value"] as? String { alternates.append(value) }
+                }
+            }
+            info.alternateTitles = Array(Set(alternates.filter { $0.unicodeScalars.allSatisfy { $0.value < 0x3000 } })).sorted()
 
             func itemIDs(_ property: String) -> [String] {
                 (claims[property] as? [[String: Any]] ?? []).compactMap { claim in

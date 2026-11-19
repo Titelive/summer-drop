@@ -56,8 +56,8 @@ jobs:
       - name: Vérifier les fiches de jeu (sources en ligne)
         continue-on-error: true
         run: |
-          xcrun swiftc -parse-as-library -target arm64-apple-macos26.0 Sources/GameInfoService.swift Tools/GameInfoCheck.swift -o gameinfo-check
-          ./gameinfo-check "Banjo-Tooie (Europe) (En,Fr,De,Es)" "Super Mario 64 (Europe) (En,Fr,De)" "Conker's Bad Fur Day (Europe)" "Animal Forest (Japan)"
+          xcrun swiftc -parse-as-library -target arm64-apple-macos26.0 Sources/GameInfoService.swift Sources/ThumbnailIndex.swift Tools/GameInfoCheck.swift -o gameinfo-check
+          ./gameinfo-check "Banjo-Tooie (Europe) (En,Fr,De,Es)" "Super Mario 64 (Europe) (En,Fr,De)" "Conker's Bad Fur Day (Europe)" "Animal Forest (Japan)" "Animal Forest (J) [T+Eng1.0_Zoinkity] [i] [n]"
 
       - name: Compiler et créer l'image disque
         run: VERSION="${{ steps.version.outputs.value }}" ./build.sh --dmg

@@ -77,7 +77,7 @@ struct GameCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 14) {
-                RemoteImage(url: info?.boxartURL, placeholder: "shippingbox")
+                RemoteImage(url: info?.boxartURL, placeholder: "gamecontroller", loading: info == nil)
                     .frame(width: 120, height: 86)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
 
@@ -89,6 +89,8 @@ struct GameCardView: View {
                         Text(line)
                             .font(.callout)
                             .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     if let info, !info.genres.isEmpty {
                         Text(info.genres.joined(separator: " · "))
@@ -107,31 +109,55 @@ struct GameCardView: View {
                 }
             }
 
+            // Captures : seulement celles qui existent (zone de hauteur fixe pour ne pas
+            // redimensionner la bulle pendant le chargement).
             HStack(spacing: 10) {
-                RemoteImage(url: info?.titleScreenURL, placeholder: "photo")
-                    .aspectRatio(4 / 3, contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                RemoteImage(url: info?.snapURL, placeholder: "gamecontroller")
-                    .aspectRatio(4 / 3, contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                if info == nil {
+                    RemoteImage(url: nil, placeholder: "photo", loading: true)
+                    RemoteImage(url: nil, placeholder: "photo", loading: true)
+                } else if info?.titleScreenURL == nil && info?.snapURL == nil {
+                    VStack(spacing: 6) {
+                        Image(systemName: "photo.on.rectangle.angled")
+                            .font(.title2)
+                        Text("Aucune capture trouvée pour ce jeu")
+                            .font(.caption)
+                    }
+                    .foregroundStyle(.tertiary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    if let url = info?.titleScreenURL {
+                        RemoteImage(url: url, placeholder: "photo")
+                    }
+                    if let url = info?.snapURL {
+                        RemoteImage(url: url, placeholder: "photo")
+                    }
+                }
             }
+            .frame(height: 150)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
 
             technicalGrid
 
-            if let summary = info?.summary, !summary.isEmpty {
-                Text(summary)
-                    .font(.callout)
-                    .lineLimit(6)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .foregroundStyle(.primary.opacity(0.85))
-            } else if info == nil {
-                HStack(spacing: 8) {
-                    ProgressView().controlSize(.small)
-                    Text("Recherche des informations…")
+            Group {
+                if let summary = info?.summary, !summary.isEmpty {
+                    Text(summary)
+                        .font(.callout)
+                        .lineLimit(5)
+                        .foregroundStyle(.primary.opacity(0.85))
+                } else if info == nil {
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text("Recherche des informations…")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    Text("Aucun résumé trouvé.")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.tertiary)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
             HStack {
                 if let url = info?.wikipediaURL {
@@ -139,16 +165,24 @@ struct GameCardView: View {
                         .font(.caption)
                 }
                 Spacer()
+                if info?.imagesFoundByAI == true {
+                    Label("Images trouvées par l'IA d'Apple", systemImage: "apple.intelligence")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .help("L'IA de l'appareil a reconnu le jeu ; vérifiez que ce sont les bonnes images.")
+                }
                 Text("Sources : Wikipédia, Wikidata, libretro")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
         }
         .padding(18)
-        .frame(width: 440)
+        // Taille fixe : une bulle qui change de taille pendant son affichage fait planter AppKit.
+        .frame(width: 460, height: 560, alignment: .top)
+        .background(Color(nsColor: .windowBackgroundColor).opacity(0.75))
         .task(id: entry.name) {
             let loaded = await GameInfoStore.shared.info(forFileName: entry.name)
-            withAnimation(.easeOut(duration: 0.25)) { info = loaded }
+            info = loaded
         }
     }
 
@@ -170,8 +204,12 @@ struct GameCardView: View {
         default: format = ext
         }
         return Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 5) {
-            row("Région", parsed.regions.isEmpty ? "—" : parsed.regions.joined(separator: ", "))
-            row("Langues", parsed.languages.isEmpty ? "—" : parsed.languages.joined(separator: ", "))
+            if !parsed.regions.isEmpty {
+                row("Région", parsed.regions.joined(separator: ", "))
+            }
+            if !parsed.languages.isEmpty {
+                row("Langues", parsed.languages.joined(separator: ", "))
+            }
             row("Taille", entry.sizeText.isEmpty ? "—" : entry.sizeText)
             row("Format", format)
             if let revision = parsed.revision {
@@ -203,15 +241,16 @@ struct GameCardView: View {
 struct RemoteImage: View {
     let url: URL?
     let placeholder: String
+    var loading = false
 
     var body: some View {
         ZStack {
             Rectangle().fill(.primary.opacity(0.06))
             if let url {
-                AsyncImage(url: url, transaction: Transaction(animation: .easeOut(duration: 0.25))) { phase in
+                AsyncImage(url: url) { phase in
                     switch phase {
                     case .success(let image):
-                        image.resizable().scaledToFill()
+                        image.resizable().scaledToFit()
                     case .failure:
                         Image(systemName: placeholder)
                             .font(.title2)
@@ -220,6 +259,8 @@ struct RemoteImage: View {
                         ProgressView().controlSize(.small)
                     }
                 }
+            } else if loading {
+                ProgressView().controlSize(.small)
             } else {
                 Image(systemName: placeholder)
                     .font(.title2)

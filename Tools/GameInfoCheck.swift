@@ -12,6 +12,8 @@ struct GameInfoCheck {
             print("wiki: \(info.wikiTitle ?? "-") | année: \(info.year ?? "-")")
             print("dév: \(info.developers) | éditeur: \(info.publishers) | genres: \(info.genres)")
             print("résumé: \(info.summary?.prefix(120) ?? "-")")
+            print("alternatifs: \(info.alternateTitles.prefix(8))")
+            print("images trouvées: \([info.boxartURL, info.titleScreenURL, info.snapURL].compactMap { $0 }.count)")
             for url in [info.boxartURL, info.titleScreenURL, info.snapURL].compactMap({ $0 }) {
                 var request = URLRequest(url: url)
                 request.httpMethod = "HEAD"
