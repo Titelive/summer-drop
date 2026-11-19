@@ -317,25 +317,58 @@ struct DropZone: View {
     @State private var showImporter = false
 
     var body: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 12) {
+            // En-tête, symétrique de « Récupérer sur le Mac ».
+            HStack(spacing: 8) {
+                Image(systemName: "laptopcomputer.and.arrow.down")
+                    .foregroundStyle(.orange)
+                Text("Envoyer sur la cartouche")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                HStack(spacing: 4) {
+                    Image(systemName: "laptopcomputer")
+                    Image(systemName: "arrow.right")
+                    Image(systemName: "sdcard")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .help("Du Mac vers la carte SD de la SummerCart64")
+            }
+
+            Spacer(minLength: 0)
+
             Image(systemName: isTargeted ? "arrow.down.circle.fill" : "square.and.arrow.down.on.square")
-                .font(.system(size: 46, weight: .light))
+                .font(.system(size: 44, weight: .light))
                 .symbolEffect(.bounce, value: isTargeted)
             Text(isTargeted ? "Lâchez pour envoyer" : "Déposez vos ROM ici")
                 .font(.title3.weight(.semibold))
                 .contentTransition(.interpolate)
-            Text("Du Mac vers la carte · destination : \(model.currentPath)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
             Button {
                 showImporter = true
             } label: {
-                Label("Choisir des fichiers…", systemImage: "folder")
+                Label("Choisir des ROM ou un dossier…", systemImage: "folder")
             }
             .buttonStyle(.glassProminent)
             .disabled(!model.isConnected)
+
+            Spacer(minLength: 0)
+
+            // Destination lisible sur la carte.
+            HStack(spacing: 8) {
+                Image(systemName: "sdcard.fill")
+                    .foregroundStyle(.orange)
+                Text("Arrivée :")
+                    .foregroundStyle(.secondary)
+                Text(model.currentPathDisplay)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
+                    .truncationMode(.head)
+                Spacer(minLength: 0)
+            }
+            .font(.callout)
+            .help("Ouvrez un dossier dans la liste de droite pour changer la destination.")
         }
-        .frame(maxWidth: .infinity, minHeight: 220)
+        .frame(maxWidth: .infinity, minHeight: 240)
         .padding(20)
         .glassEffect(
             isTargeted ? Glass.regular.tint(Color.yellow.opacity(0.35)).interactive() : Glass.regular.interactive(),
@@ -370,7 +403,7 @@ struct DropZone: View {
             }
             return true
         }
-        .fileImporter(isPresented: $showImporter, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+        .fileImporter(isPresented: $showImporter, allowedContentTypes: [.item, .folder], allowsMultipleSelection: true) { result in
             if case .success(let urls) = result {
                 model.enqueue(urls)
             }
@@ -468,7 +501,7 @@ struct UploadRow: View {
                         .animation(.linear(duration: 0.12), value: fileProgress)
                 case .done:
                     Text(item.kind == .upload
-                         ? "Envoyé vers \(item.destination)"
+                         ? "Envoyé sur \(AppModel.sdDisplayPath((item.destination as NSString).deletingLastPathComponent))"
                          : "Téléchargé dans \((item.destination as NSString).deletingLastPathComponent)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -526,7 +559,7 @@ struct SDCardView: View {
             HStack(spacing: 10) {
                 Image(systemName: "sdcard.fill")
                     .foregroundStyle(.orange)
-                Text("Carte SD « SC64 »")
+                Text("SummerCart64 › Carte SD")
                     .font(.headline)
                     .layoutPriority(1)
                 Spacer(minLength: 8)
@@ -565,9 +598,10 @@ struct SDCardView: View {
             }
 
             HStack {
-                Text(model.currentPath)
-                    .font(.callout.monospaced())
+                Label(model.currentPathDisplay, systemImage: "folder")
+                    .font(.callout)
                     .foregroundStyle(.secondary)
+                    .help(model.currentPath)
                 Spacer()
                 if model.isConnected && model.listError == nil && model.entries.contains(where: { !$0.isDirectory }) {
                     Button(model.allFilesSelected ? "Tout désélectionner" : "Tout sélectionner") {

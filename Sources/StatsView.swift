@@ -65,7 +65,7 @@ struct StatsView: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Dossier affiché de la carte SD (\(model.currentPath))")
+                Text("Dossier affiché : \(model.currentPathDisplay)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if model.isConnected && model.listError == nil {

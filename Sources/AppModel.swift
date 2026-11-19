@@ -105,8 +105,12 @@ final class AppModel {
         let wasConnected: Bool
         if case .connected = connection { wasConnected = true } else { wasConnected = false }
 
+        let wasDisconnected = connection == .disconnected
         if result.succeeded, let first = devices.first {
             connection = .connected(first)
+            if wasDisconnected {
+                Notifier.shared.post(title: "SummerCart64 connectée", body: "La cartouche \(first.serial) est prête.", sound: false)
+            }
             if !wasConnected {
                 currentPath = "/"
                 await refreshList()
@@ -114,6 +118,7 @@ final class AppModel {
         } else {
             connection = .disconnected
             if wasConnected {
+                Notifier.shared.post(title: "SummerCart64 débranchée", body: "La cartouche n'est plus détectée.", sound: false)
                 entries = []
                 listError = nil
             }
@@ -198,9 +203,7 @@ final class AppModel {
     func enqueue(_ urls: [URL]) {
         let fm = FileManager.default
         var added = 0
-        for url in urls {
-            var isDirectory: ObjCBool = false
-            guard fm.fileExists(atPath: url.path, isDirectory: &isDirectory), !isDirectory.boolValue else { continue }
+        for url in Self.expandFolders(urls, fileManager: fm) {
             let attributes = try? fm.attributesOfItem(atPath: url.path)
             let size = (attributes?[.size] as? NSNumber)?.int64Value ?? 0
             let destination = Self.join(currentPath, url.lastPathComponent)
@@ -208,10 +211,38 @@ final class AppModel {
             added += 1
         }
         if added == 0 {
-            banner = "Déposez des fichiers (les dossiers ne sont pas pris en charge)."
+            banner = "Aucune ROM trouvée (.z64, .n64, .v64, .ndd)."
             return
         }
         startQueueIfNeeded()
+    }
+
+    static let romExtensions: Set<String> = ["z64", "n64", "v64", "ndd"]
+
+    /// Fichiers : gardés tels quels. Dossiers : on y prend toutes les ROM, sous-dossiers compris,
+    /// et elles arrivent ensemble dans le dossier de destination de la carte.
+    private static func expandFolders(_ urls: [URL], fileManager fm: FileManager) -> [URL] {
+        var files: [URL] = []
+        for url in urls {
+            var isDirectory: ObjCBool = false
+            guard fm.fileExists(atPath: url.path, isDirectory: &isDirectory) else { continue }
+            if !isDirectory.boolValue {
+                files.append(url)
+                continue
+            }
+            guard let walker = fm.enumerator(
+                at: url,
+                includingPropertiesForKeys: [.isRegularFileKey],
+                options: [.skipsHiddenFiles, .skipsPackageDescendants]
+            ) else { continue }
+            var found: [URL] = []
+            for case let file as URL in walker
+            where romExtensions.contains(file.pathExtension.lowercased()) {
+                found.append(file)
+            }
+            files += found.sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
+        }
+        return files
     }
 
     private func startQueueIfNeeded() {
@@ -323,6 +354,26 @@ final class AppModel {
         queue.contains { $0.kind == .download && $0.state == .done }
     }
 
+    private func notifyBatch(sent: Int, received: Int, failed: Int) {
+        guard sent + received + failed > 0 else { return }
+        var parts: [String] = []
+        if sent > 0 { parts.append("\(sent) ROM envoyée\(sent > 1 ? "s" : "") sur la carte") }
+        if received > 0 { parts.append("\(received) fichier\(received > 1 ? "s" : "") récupéré\(received > 1 ? "s" : "") sur le Mac") }
+        if failed > 0 { parts.append("\(failed) échec\(failed > 1 ? "s" : "")") }
+        Notifier.shared.post(
+            title: failed > 0 ? "Transferts terminés avec des erreurs" : "Transferts terminés",
+            body: parts.joined(separator: ", ") + "."
+        )
+    }
+
+    /// « Carte SD › racine », « Carte SD › saves »…
+    static func sdDisplayPath(_ path: String) -> String {
+        let parts = path.split(separator: "/").map(String.init)
+        return (["Carte SD"] + (parts.isEmpty ? ["racine"] : parts)).joined(separator: " › ")
+    }
+
+    var currentPathDisplay: String { Self.sdDisplayPath(currentPath) }
+
     func clearFinished() {
         queue.removeAll { item in
             switch item.state {
@@ -357,6 +408,7 @@ final class AppModel {
             try? await Task.sleep(for: .milliseconds(200))
         }
         commandRunning = true
+        var sent = 0, received = 0, failed = 0
 
         while let index = queue.firstIndex(where: { $0.state == .waiting }) {
             let item = queue[index]
@@ -404,6 +456,7 @@ final class AppModel {
                 }
                 stats.lastTransfer = Date()
                 stats.save()
+                if item.kind == .upload { sent += 1 } else { received += 1 }
                 if item.size > 2_000_000, elapsed > 0.5 {
                     let measured = Double(item.size) / elapsed
                     switch item.kind {
@@ -420,6 +473,7 @@ final class AppModel {
                 queue[current].state = .failed(message)
                 stats.failures += 1
                 stats.save()
+                failed += 1
                 if item.kind == .download {
                     // Ne pas laisser de fichier incomplet sur le Mac.
                     try? FileManager.default.removeItem(atPath: item.destination)
@@ -437,6 +491,7 @@ final class AppModel {
         currentFileProgress = 0
         commandRunning = false
         isUploading = false
+        notifyBatch(sent: sent, received: received, failed: failed)
         await refreshList()
     }
 }

@@ -152,7 +152,7 @@ actor GameInfoStore {
         // 1. Recherche de l'article (anglais : couverture la plus large) et de son élément Wikidata.
         guard let searchURL = url("https://en.wikipedia.org/w/api.php", [
             "action": "query", "format": "json", "generator": "search",
-            "gsrsearch": "\(info.title) Nintendo 64 video game", "gsrlimit": "3",
+            "gsrsearch": "\(info.title) Nintendo 64 video game", "gsrlimit": "8",
             "prop": "pageprops", "ppprop": "wikibase_item",
         ]), let search = await json(searchURL),
               let pages = (search["query"] as? [String: Any])?["pages"] as? [String: Any] else { return }
@@ -160,7 +160,20 @@ actor GameInfoStore {
         let ranked = pages.values
             .compactMap { $0 as? [String: Any] }
             .sorted { ($0["index"] as? Int ?? 99) < ($1["index"] as? Int ?? 99) }
-        guard let page = ranked.first,
+        // On préfère l'article dont le titre correspond au jeu (« Banjo-Tooie » plutôt que « Banjo-Kazooie »,
+        // « Super Mario 64 » plutôt que « Super Mario 64 DS »).
+        func normalized(_ text: String) -> String {
+            var value = text
+            if let cut = value.range(of: " (") { value = String(value[..<cut.lowerBound]) }
+            return value.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+                .replacingOccurrences(of: ":", with: "")
+                .replacingOccurrences(of: "-", with: " ")
+                .trimmingCharacters(in: .whitespaces)
+        }
+        let wanted = normalized(info.title)
+        let exact = ranked.first { normalized($0["title"] as? String ?? "") == wanted }
+        let prefix = ranked.first { normalized($0["title"] as? String ?? "").hasPrefix(wanted) }
+        guard let page = exact ?? prefix ?? ranked.first,
               let enTitle = page["title"] as? String else { return }
         let qid = (page["pageprops"] as? [String: Any])?["wikibase_item"] as? String
         info.wikiTitle = enTitle

@@ -100,11 +100,19 @@ struct OnboardingView: View {
                 .opacity(step == 0 ? 0 : 1)
                 .disabled(step == 0)
                 Spacer()
-                Button(isLast ? "Commencer" : "Suivant") {
+                Button {
                     if isLast { finish() } else { go(1) }
+                } label: {
+                    HStack(spacing: 8) {
+                        Text(isLast ? "Commencer" : "Suivant")
+                        Text(isLast ? "⌘↩" : "↩")
+                            .font(.caption.monospaced())
+                            .opacity(0.7)
+                    }
                 }
                 .buttonStyle(.glassProminent)
-                .keyboardShortcut(.defaultAction)
+                // Dernière page : ⌘ Entrée (ou clic) ; avant : Entrée.
+                .keyboardShortcut(isLast ? KeyboardShortcut(.return, modifiers: .command) : .defaultAction)
             }
             .background(
                 // Flèche droite : page suivante (en plus de Entrée).

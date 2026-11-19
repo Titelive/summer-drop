@@ -70,6 +70,7 @@ struct GeneralSettings: View {
     @AppStorage("lastDownloadFolder") private var downloadFolder = ""
     @State private var showFolderPicker = false
     @AppStorage("gameCardsEnabled") private var cardsEnabled = true
+    @AppStorage(Notifier.enabledKey) private var notificationsEnabled = true
 
     var body: some View {
         Form {
@@ -83,6 +84,13 @@ struct GeneralSettings: View {
                 Text("« Automatique » suit le réglage de macOS.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+
+            Section("Notifications") {
+                Toggle("Me prévenir à la fin des transferts, au branchement de la cartouche et quand une mise à jour est prête", isOn: $notificationsEnabled)
+                    .onChange(of: notificationsEnabled) { _, enabled in
+                        if enabled { Notifier.shared.requestAuthorization() }
+                    }
             }
 
             Section("Fiches de jeu") {
