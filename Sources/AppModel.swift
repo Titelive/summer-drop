@@ -48,6 +48,8 @@ struct UploadItem: Identifiable, Equatable {
     /// Chemin sur la carte SD (envoi) ou chemin local (téléchargement).
     let destination: String
     let size: Int64
+    /// ⌘X : supprimer l'original une fois la copie réussie (corbeille côté Mac, effacement côté carte).
+    var moveSource = false
     var state: State = .waiting
 
     var name: String { (source as NSString).lastPathComponent }
@@ -75,6 +77,9 @@ final class AppModel {
     var macSelection: Set<URL> = []
     var activePane: Pane = .card
     var clipboard: AppClipboard = .empty
+    var clipboardIsCut = false
+    /// Demande de confirmation avant un déplacement (⌘X puis ⌘V).
+    var pendingMove = false
 
     /// Entrées affichées, filtrées par la recherche.
     var visibleEntries: [SDEntry] {
@@ -227,14 +232,14 @@ final class AppModel {
 
     // MARK: - Envoi
 
-    func enqueue(_ urls: [URL]) {
+    func enqueue(_ urls: [URL], move: Bool = false) {
         let fm = FileManager.default
         var added = 0
         for url in Self.expandFolders(urls, fileManager: fm) {
             let attributes = try? fm.attributesOfItem(atPath: url.path)
             let size = (attributes?[.size] as? NSNumber)?.int64Value ?? 0
             let destination = Self.join(currentPath, url.lastPathComponent)
-            queue.append(UploadItem(kind: .upload, source: url.path, destination: destination, size: size))
+            queue.append(UploadItem(kind: .upload, source: url.path, destination: destination, size: size, moveSource: move))
             added += 1
         }
         if added == 0 {
@@ -400,7 +405,51 @@ final class AppModel {
         }
     }
 
+    /// Supprime l'original après un déplacement réussi.
+    private func removeSource(of item: UploadItem, tool: URL) async {
+        switch item.kind {
+        case .upload:
+            // Côté Mac : à la corbeille, donc récupérable.
+            do {
+                try FileManager.default.trashItem(at: URL(fileURLWithPath: item.source), resultingItemURL: nil)
+            } catch {
+                banner = "Copié, mais impossible de mettre « \(item.name) » à la corbeille."
+            }
+        case .download:
+            let result = await Deployer.run(tool, ["sd", "rm", item.source])
+            if !result.succeeded || Deployer.consoleWasOn(result.output) {
+                banner = "Copié sur le Mac, mais « \(item.name) » n'a pas pu être effacé de la carte."
+            }
+        }
+    }
+
+    func cutFromActivePane() {
+        copyFromActivePane()
+        guard clipboard != .empty else { return }
+        clipboardIsCut = true
+        let count: Int
+        switch clipboard {
+        case .macFiles(let files): count = files.count
+        case .cardFiles(let files, _): count = files.count
+        case .empty: count = 0
+        }
+        banner = "\(count) ROM à déplacer : cliquez sur l'autre panneau puis ⌘V."
+    }
+
+    /// Texte de la confirmation de déplacement.
+    var pendingMoveDescription: String {
+        switch clipboard {
+        case .macFiles(let files):
+            return "\(files.count) ROM seront copiées sur la carte, puis mises à la corbeille du Mac."
+        case .cardFiles(let files, _):
+            return "\(files.count) ROM seront copiées sur le Mac, puis effacées de la carte SD. Cette suppression est définitive."
+        case .empty:
+            return ""
+        }
+    }
+
     func copyFromActivePane() {
+        clipboardIsCut = false
         switch activePane {
         case .mac:
             let files = selectedMacFiles
@@ -420,6 +469,28 @@ final class AppModel {
     }
 
     func pasteIntoActivePane() {
+        if clipboardIsCut && clipboard != .empty {
+            // Le déplacement attend une confirmation explicite.
+            let fromMacToCard: Bool
+            if case .macFiles = clipboard { fromMacToCard = true } else { fromMacToCard = false }
+            guard (fromMacToCard && activePane == .card) || (!fromMacToCard && activePane == .mac) else {
+                banner = "Cliquez d'abord sur l'autre panneau, puis ⌘V."
+                return
+            }
+            pendingMove = true
+            return
+        }
+        paste(move: false)
+    }
+
+    func confirmMove() {
+        pendingMove = false
+        paste(move: true)
+        clipboard = .empty
+        clipboardIsCut = false
+    }
+
+    private func paste(move: Bool) {
         switch activePane {
         case .card:
             var urls: [URL] = []
@@ -433,14 +504,14 @@ final class AppModel {
             }
             guard !urls.isEmpty else { banner = "Rien à coller : copiez d'abord des ROM du Mac (⌘C)."; return }
             guard isConnected else { banner = "Branchez d'abord la SummerCart64."; return }
-            enqueue(urls)
+            enqueue(urls, move: move)
         case .mac:
             guard case .cardFiles(let files, let folder) = clipboard else {
                 banner = "Rien à coller : copiez d'abord des ROM de la carte (⌘C)."
                 return
             }
             guard let destination = suggestedDownloadFolder else { return }
-            download(files, to: destination, from: folder)
+            download(files, to: destination, from: folder, move: move)
         }
     }
 
@@ -477,7 +548,7 @@ final class AppModel {
         return fm.urls(for: .downloadsDirectory, in: .userDomainMask).first
     }
 
-    func download(_ files: [SDEntry], to folder: URL, from sdFolder: String? = nil) {
+    func download(_ files: [SDEntry], to folder: URL, from sdFolder: String? = nil, move: Bool = false) {
         let fm = FileManager.default
         setDownloadFolder(folder)
         let origin = sdFolder ?? currentPath
@@ -486,7 +557,7 @@ final class AppModel {
             let source = Self.join(origin, entry.name)
             let target = Self.uniqueURL(for: entry.name, in: folder, reserved: reserved, fileManager: fm)
             reserved.insert(target.path)
-            queue.append(UploadItem(kind: .download, source: source, destination: target.path, size: entry.approxBytes))
+            queue.append(UploadItem(kind: .download, source: source, destination: target.path, size: entry.approxBytes, moveSource: move))
         }
         selection = []
         startQueueIfNeeded()
@@ -621,6 +692,9 @@ final class AppModel {
                 stats.lastTransfer = Date()
                 stats.save()
                 if item.kind == .upload { sent += 1 } else { received += 1 }
+                if item.moveSource {
+                    await removeSource(of: item, tool: tool)
+                }
                 if item.size > 2_000_000, elapsed > 0.5 {
                     let measured = Double(item.size) / elapsed
                     switch item.kind {

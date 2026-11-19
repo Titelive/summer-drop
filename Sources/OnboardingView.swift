@@ -28,7 +28,7 @@ struct OnboardingView: View {
              text: "À **gauche**, un dossier de votre **Mac** (par défaut **Jeux › Nintendo 64**). À **droite**, la **carte SD** de la cartouche. Pour **envoyer**, **glissez** des ROM de gauche à droite, ou depuis le **Finder**, ou cochez-les puis **« Envoyer »**. Les dossiers entiers sont acceptés."),
         Page(systemImage: "arrow.down.to.line", color: .blue,
              title: "Récupérez-les sur le Mac",
-             text: "**Glissez** des ROM de la **carte** vers le panneau **Mac**, ou cochez-les puis **« Récupérer »**. Raccourcis : **⌘A** tout sélectionner, **⌘C** copier, puis cliquez sur l'autre panneau et **⌘V** coller. Aucun fichier du Mac n'est **jamais écrasé**."), puis cliquez sur **« Récupérer »** en bas. Elles arrivent dans le dossier affiché, par défaut **iCloud Drive › Documents › Jeux › Nintendo 64**. Aucun fichier du Mac n'est **jamais écrasé**."),
+             text: "**Glissez** des ROM de la **carte** vers le panneau **Mac**, ou cochez-les puis **« Récupérer »**. Raccourcis : **⌘A** tout sélectionner, **⌘C** copier (**⌘X** déplacer), puis cliquez sur l'autre panneau et **⌘V** coller. Aucun fichier du Mac n'est **jamais écrasé**."),
         Page(systemImage: "wrench.and.screwdriver.fill", color: .purple,
              title: "L'outil sc64deployer",
              text: "Summer Drop s'appuie sur **sc64deployer**, l'**outil officiel** de la SummerCart64. Il est normalement **inclus dans l'app**. Vérifiez ci-dessous qu'il est bien **trouvé**."),

@@ -42,6 +42,16 @@ struct ContentView: View {
         .background(shortcuts)
         .animation(reduceMotion ? nil : .spring(duration: 0.45, bounce: 0.25), value: model.banner)
         .animation(reduceMotion ? nil : .spring(duration: 0.5), value: model.connection)
+        .confirmationDialog(
+            "Déplacer ces ROM ?",
+            isPresented: Binding(get: { model.pendingMove }, set: { model.pendingMove = $0 }),
+            titleVisibility: .visible
+        ) {
+            Button("Déplacer", role: .destructive) { model.confirmMove() }
+            Button("Annuler", role: .cancel) { model.pendingMove = false }
+        } message: {
+            Text(model.pendingMoveDescription)
+        }
         .sheet(isPresented: Binding(
             get: { model.showOnboarding },
             set: { model.showOnboarding = $0 }
@@ -63,6 +73,8 @@ extension ContentView {
                 .keyboardShortcut(editing ? nil : KeyboardShortcut("c", modifiers: .command))
             Button("") { model.pasteIntoActivePane() }
                 .keyboardShortcut(editing ? nil : KeyboardShortcut("v", modifiers: .command))
+            Button("") { model.cutFromActivePane() }
+                .keyboardShortcut(editing ? nil : KeyboardShortcut("x", modifiers: .command))
         }
         .opacity(0)
         .allowsHitTesting(false)
