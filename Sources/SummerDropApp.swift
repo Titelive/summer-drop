@@ -27,13 +27,13 @@ struct SummerDropApp: App {
     var body: some Scene {
         Window("Summer Drop", id: "main") {
             ContentView(model: model, updater: updater)
-                .frame(minWidth: 880, minHeight: 580)
+                .frame(minWidth: 1000, minHeight: 640)
                 .task {
                     model.start()
                     updater.startAutomaticChecks()
                 }
         }
-        .defaultSize(width: 1040, height: 680)
+        .defaultSize(width: 1180, height: 760)
         .windowResizability(.contentMinSize)
 
         Settings {

@@ -18,15 +18,14 @@ struct ContentView: View {
                 if model.connection == .missingTool {
                     MissingToolView(model: model)
                 } else {
+                    // Deux panneaux : le Mac à gauche, la carte à droite. On glisse de l'un à l'autre.
                     HStack(alignment: .top, spacing: 16) {
-                        VStack(spacing: 16) {
-                            DropZone(model: model)
-                            UploadQueueView(model: model)
-                        }
-                        .frame(minWidth: 340, idealWidth: 400, maxWidth: 460)
-
+                        MacPanelView(model: model)
                         SDCardView(model: model)
                     }
+                    UploadQueueView(model: model)
+                        .frame(height: model.queue.isEmpty ? 96 : 170)
+                        .animation(.spring(duration: 0.4), value: model.queue.isEmpty)
                 }
 
                 HStack {
@@ -40,6 +39,7 @@ struct ContentView: View {
                 BannerView(message: message) { model.banner = nil }
             }
         }
+        .background(shortcuts)
         .animation(reduceMotion ? nil : .spring(duration: 0.45, bounce: 0.25), value: model.banner)
         .animation(reduceMotion ? nil : .spring(duration: 0.5), value: model.connection)
         .sheet(isPresented: Binding(
@@ -48,6 +48,25 @@ struct ContentView: View {
         )) {
             OnboardingView(model: model)
         }
+    }
+}
+
+extension ContentView {
+    /// ⌘A, ⌘C, ⌘V agissent sur le panneau actif (sauf pendant la saisie d'une recherche).
+    @ViewBuilder
+    var shortcuts: some View {
+        let editing = model.isEditingText
+        ZStack {
+            Button("") { model.selectAllInActivePane() }
+                .keyboardShortcut(editing ? nil : KeyboardShortcut("a", modifiers: .command))
+            Button("") { model.copyFromActivePane() }
+                .keyboardShortcut(editing ? nil : KeyboardShortcut("c", modifiers: .command))
+            Button("") { model.pasteIntoActivePane() }
+                .keyboardShortcut(editing ? nil : KeyboardShortcut("v", modifiers: .command))
+        }
+        .opacity(0)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 
@@ -567,7 +586,54 @@ struct UploadRow: View {
 struct SDCardView: View {
     let model: AppModel
     @State private var showFolderPicker = false
+    @State private var isTargeted = false
     @FocusState private var searchFocused: Bool
+
+    private var isActive: Bool { model.activePane == .card }
+
+    /// Fichiers du Finder ou ROM glissées depuis le panneau Mac : envoi sur la carte.
+    private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
+        guard model.isConnected else {
+            model.banner = "Branchez d'abord la SummerCart64."
+            return false
+        }
+        for provider in providers {
+            if provider.canLoadObject(ofClass: NSString.self) {
+                _ = provider.loadObject(ofClass: NSString.self) { object, _ in
+                    if let text = object as? String, let paths = DragPayload.lines(text, prefix: DragPayload.mac) {
+                        Task { @MainActor in
+                            model.activePane = .card
+                            model.macSelection = []
+                            model.enqueue(paths.map { URL(fileURLWithPath: $0) })
+                        }
+                    } else {
+                        loadFileURL(provider)
+                    }
+                }
+            } else {
+                loadFileURL(provider)
+            }
+        }
+        return true
+    }
+
+    private func loadFileURL(_ provider: NSItemProvider) {
+        _ = provider.loadObject(ofClass: URL.self) { url, _ in
+            guard let url, url.isFileURL else { return }
+            Task { @MainActor in
+                model.activePane = .card
+                model.enqueue([url])
+            }
+        }
+    }
+
+    /// Glisser une ROM de la carte vers le panneau Mac (toute la sélection si elle en fait partie).
+    private func dragProvider(for entry: SDEntry) -> NSItemProvider {
+        let selected = model.selectedFiles
+        let files = selected.contains(entry) ? selected : [entry]
+        let payload = DragPayload.card + ([model.currentPath] + files.map(\.name)).joined(separator: "\n")
+        return NSItemProvider(object: payload as NSString)
+    }
 
     /// Récupère directement dans le dossier de destination affiché en bas du panneau.
     private func retrieve(_ files: [SDEntry]) {
@@ -580,7 +646,7 @@ struct SDCardView: View {
             HStack(spacing: 10) {
                 Image(systemName: "sdcard.fill")
                     .foregroundStyle(.orange)
-                Text("SummerCart64 › Carte SD")
+                Text("SummerCart64")
                     .font(.headline)
                     .layoutPriority(1)
                 Spacer(minLength: 8)
@@ -626,19 +692,20 @@ struct SDCardView: View {
                 Spacer()
                 if model.isConnected && model.listError == nil && model.entries.contains(where: { !$0.isDirectory }) {
                     Button {
+                        model.activePane = .card
                         model.toggleSelectAll()
                     } label: {
                         HStack(spacing: 6) {
                             Text(model.allFilesSelected ? "Tout désélectionner" : "Tout sélectionner")
-                            Text("⌘A")
-                                .font(.caption.monospaced())
-                                .foregroundStyle(.secondary)
+                            if isActive {
+                                Text("⌘A")
+                                    .font(.caption.monospaced())
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                     .buttonStyle(.glass)
                     .controlSize(.small)
-                    // ⌘A garde son rôle habituel quand on écrit dans la recherche.
-                    .keyboardShortcut(searchFocused ? nil : KeyboardShortcut("a", modifiers: .command))
                 }
             }
 
@@ -652,6 +719,23 @@ struct SDCardView: View {
         .padding(18)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .glassEffect(.regular, in: .rect(cornerRadius: 24))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24)
+                .strokeBorder(
+                    isTargeted ? Color.orange : Color.white.opacity(isActive ? 0.35 : 0),
+                    style: StrokeStyle(lineWidth: isTargeted ? 3 : 1.5, dash: isTargeted ? [8, 6] : [])
+                )
+        )
+        .animation(.spring(duration: 0.3), value: isTargeted)
+        .animation(.easeOut(duration: 0.2), value: isActive)
+        .contentShape(Rectangle())
+        .simultaneousGesture(TapGesture().onEnded { model.activePane = .card })
+        .onDrop(of: [UTType.fileURL, UTType.utf8PlainText], isTargeted: $isTargeted) { providers in
+            handleDrop(providers)
+        }
+        .onChange(of: searchFocused) { _, focused in
+            model.isEditingText = focused
+        }
         .fileImporter(isPresented: $showFolderPicker, allowedContentTypes: [.folder], allowsMultipleSelection: false) { result in
             if case .success(let urls) = result, let folder = urls.first {
                 model.setDownloadFolder(folder)
@@ -716,7 +800,7 @@ struct SDCardView: View {
                     .font(.subheadline.weight(.semibold))
                 Spacer()
                 Text(count == 0
-                     ? "Cochez des ROM dans la liste"
+                     ? "Cochez des ROM ou glissez-les à gauche"
                      : "\(count) fichier\(count > 1 ? "s" : "") sélectionné\(count > 1 ? "s" : "")")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -764,7 +848,7 @@ struct SDCardView: View {
         } else if !model.entries.isEmpty && model.visibleEntries.isEmpty {
             placeholder(systemImage: "magnifyingglass", title: "Aucun résultat", detail: "Aucun fichier ne contient « \(model.searchText) » dans ce dossier.")
         } else if model.entries.isEmpty {
-            placeholder(systemImage: "tray", title: "Dossier vide", detail: "Déposez des ROM à gauche pour les envoyer ici.")
+            placeholder(systemImage: "tray", title: "Dossier vide", detail: "Glissez ici des ROM du Mac ou du Finder.")
         } else {
             ScrollView {
                 LazyVStack(spacing: 4) {
@@ -774,7 +858,11 @@ struct SDCardView: View {
                             .transition(.opacity.combined(with: .offset(y: 8)))
                             .animation(.spring(duration: 0.4).delay(Double(min(index, 12)) * 0.025), value: model.visibleEntries)
                             .onTapGesture(count: 2) { model.open(entry) }
-                            .onTapGesture(count: 1) { model.toggleSelection(entry) }
+                            .onTapGesture(count: 1) {
+                                model.activePane = .card
+                                model.toggleSelection(entry)
+                            }
+                            .onDrag { dragProvider(for: entry) }
                             .contextMenu {
                                 if entry.isDirectory {
                                     Button("Ouvrir") { model.open(entry) }

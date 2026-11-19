@@ -9,6 +9,25 @@ enum ConnectionState: Equatable {
     case missingTool
 }
 
+/// Un élément du dossier affiché côté Mac.
+struct MacEntry: Identifiable, Equatable {
+    let url: URL
+    let entry: SDEntry
+    var id: URL { url }
+}
+
+enum Pane: Equatable {
+    case mac
+    case card
+}
+
+/// Presse-papiers interne de l'app (⌘C / ⌘V entre les deux panneaux).
+enum AppClipboard: Equatable {
+    case empty
+    case macFiles([URL])
+    case cardFiles([SDEntry], folder: String)
+}
+
 struct UploadItem: Identifiable, Equatable {
     enum Kind: Equatable {
         case upload    // Mac -> carte SD
@@ -48,6 +67,14 @@ final class AppModel {
     var queue: [UploadItem] = []
     var selection: Set<String> = []
     var searchText = ""
+    /// Vrai quand on écrit dans la recherche : ⌘A/⌘C/⌘V gardent alors leur rôle habituel.
+    var isEditingText = false
+
+    // Panneau Mac
+    var macEntries: [MacEntry] = []
+    var macSelection: Set<URL> = []
+    var activePane: Pane = .card
+    var clipboard: AppClipboard = .empty
 
     /// Entrées affichées, filtrées par la recherche.
     var visibleEntries: [SDEntry] {
@@ -277,8 +304,144 @@ final class AppModel {
     }
 
     func setDownloadFolder(_ folder: URL) {
+        let changed = UserDefaults.standard.string(forKey: Self.lastDownloadFolderKey) != folder.path
         UserDefaults.standard.set(folder.path, forKey: Self.lastDownloadFolderKey)
         downloadFolderVersion += 1
+        if changed {
+            macSelection = []
+            refreshMac()
+        }
+    }
+
+    // MARK: - Panneau Mac
+
+    /// Liste le dossier Mac affiché : sous-dossiers et ROM.
+    func refreshMac() {
+        guard let folder = suggestedDownloadFolder else {
+            macEntries = []
+            return
+        }
+        let fm = FileManager.default
+        let keys: [URLResourceKey] = [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey, .isPackageKey]
+        let urls = (try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: keys, options: [.skipsHiddenFiles])) ?? []
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+
+        let entries: [MacEntry] = urls.compactMap { url in
+            let values = try? url.resourceValues(forKeys: Set(keys))
+            let isDirectory = (values?.isDirectory ?? false) && !(values?.isPackage ?? false)
+            if !isDirectory && !Self.romExtensions.contains(url.pathExtension.lowercased()) { return nil }
+            let size = Int64(values?.fileSize ?? 0)
+            let sizeText = isDirectory ? "" : ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
+            let date = values?.contentModificationDate.map { formatter.string(from: $0) } ?? ""
+            let entry = SDEntry(name: url.lastPathComponent, isDirectory: isDirectory, sizeText: sizeText, date: date, approxBytes: size)
+            return MacEntry(url: url, entry: entry)
+        }
+        macEntries = entries.sorted { lhs, rhs in
+            if lhs.entry.isDirectory != rhs.entry.isDirectory { return lhs.entry.isDirectory }
+            return lhs.entry.name.localizedStandardCompare(rhs.entry.name) == .orderedAscending
+        }
+        macSelection = macSelection.filter { url in macEntries.contains { $0.url == url } }
+    }
+
+    var visibleMacEntries: [MacEntry] {
+        let query = searchText.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return macEntries }
+        return macEntries.filter { $0.entry.name.localizedStandardContains(query) }
+    }
+
+    func openMac(_ item: MacEntry) {
+        guard item.entry.isDirectory else { return }
+        setDownloadFolder(item.url)
+    }
+
+    func macGoUp() {
+        guard let folder = suggestedDownloadFolder else { return }
+        let parent = folder.deletingLastPathComponent()
+        guard parent.path != folder.path else { return }
+        setDownloadFolder(parent)
+    }
+
+    func toggleMacSelection(_ item: MacEntry) {
+        guard !item.entry.isDirectory else { return }
+        if macSelection.contains(item.url) { macSelection.remove(item.url) } else { macSelection.insert(item.url) }
+    }
+
+    var selectedMacFiles: [URL] {
+        macEntries.filter { !$0.entry.isDirectory && macSelection.contains($0.url) }.map(\.url)
+    }
+
+    var allMacFilesSelected: Bool {
+        let files = macEntries.filter { !$0.entry.isDirectory }
+        return !files.isEmpty && files.allSatisfy { macSelection.contains($0.url) }
+    }
+
+    func toggleSelectAllMac() {
+        if allMacFilesSelected {
+            macSelection = []
+        } else {
+            macSelection = Set(macEntries.filter { !$0.entry.isDirectory }.map(\.url))
+        }
+    }
+
+    func sendSelectedMacFiles() {
+        let files = selectedMacFiles
+        guard !files.isEmpty else { return }
+        macSelection = []
+        enqueue(files)
+    }
+
+    // MARK: - Raccourcis du panneau actif (⌘A, ⌘C, ⌘V)
+
+    func selectAllInActivePane() {
+        switch activePane {
+        case .mac: toggleSelectAllMac()
+        case .card: toggleSelectAll()
+        }
+    }
+
+    func copyFromActivePane() {
+        switch activePane {
+        case .mac:
+            let files = selectedMacFiles
+            guard !files.isEmpty else { banner = "Cochez d'abord des ROM dans le panneau Mac."; return }
+            clipboard = .macFiles(files)
+            // Aussi dans le presse-papiers du Mac : on peut coller dans le Finder.
+            let pasteboard = NSPasteboard.general
+            pasteboard.clearContents()
+            pasteboard.writeObjects(files.map { $0 as NSURL })
+            banner = "\(files.count) ROM copiée\(files.count > 1 ? "s" : "") : cliquez sur la carte puis ⌘V."
+        case .card:
+            let files = selectedFiles
+            guard !files.isEmpty else { banner = "Cochez d'abord des ROM sur la carte."; return }
+            clipboard = .cardFiles(files, folder: currentPath)
+            banner = "\(files.count) ROM copiée\(files.count > 1 ? "s" : "") : cliquez sur le panneau Mac puis ⌘V."
+        }
+    }
+
+    func pasteIntoActivePane() {
+        switch activePane {
+        case .card:
+            var urls: [URL] = []
+            if case .macFiles(let files) = clipboard { urls = files }
+            if urls.isEmpty {
+                // Fichiers copiés dans le Finder.
+                urls = NSPasteboard.general.readObjects(
+                    forClasses: [NSURL.self],
+                    options: [.urlReadingFileURLsOnly: true]
+                ) as? [URL] ?? []
+            }
+            guard !urls.isEmpty else { banner = "Rien à coller : copiez d'abord des ROM du Mac (⌘C)."; return }
+            guard isConnected else { banner = "Branchez d'abord la SummerCart64."; return }
+            enqueue(urls)
+        case .mac:
+            guard case .cardFiles(let files, let folder) = clipboard else {
+                banner = "Rien à coller : copiez d'abord des ROM de la carte (⌘C)."
+                return
+            }
+            guard let destination = suggestedDownloadFolder else { return }
+            download(files, to: destination, from: folder)
+        }
     }
 
     /// Nom lisible : « iCloud Drive › Documents › Jeux › Nintendo 64 ».
@@ -314,12 +477,13 @@ final class AppModel {
         return fm.urls(for: .downloadsDirectory, in: .userDomainMask).first
     }
 
-    func download(_ files: [SDEntry], to folder: URL) {
+    func download(_ files: [SDEntry], to folder: URL, from sdFolder: String? = nil) {
         let fm = FileManager.default
         setDownloadFolder(folder)
+        let origin = sdFolder ?? currentPath
         var reserved = Set<String>()
         for entry in files where !entry.isDirectory {
-            let source = Self.join(currentPath, entry.name)
+            let source = Self.join(origin, entry.name)
             let target = Self.uniqueURL(for: entry.name, in: folder, reserved: reserved, fileManager: fm)
             reserved.insert(target.path)
             queue.append(UploadItem(kind: .download, source: source, destination: target.path, size: entry.approxBytes))
@@ -492,6 +656,7 @@ final class AppModel {
         commandRunning = false
         isUploading = false
         notifyBatch(sent: sent, received: received, failed: failed)
+        refreshMac()
         await refreshList()
     }
 }
