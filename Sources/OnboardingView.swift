@@ -19,22 +19,22 @@ struct OnboardingView: View {
     private let pages: [Page] = [
         Page(systemImage: "sun.max.fill", color: .yellow,
              title: "Bienvenue dans Summer Drop",
-             text: "Summer Drop envoie vos ROM Nintendo 64 sur la carte SD de votre SummerCart64, et les récupère, directement depuis le Mac, par USB-C. Plus besoin de retirer la carte microSD ni d'ouvrir le Terminal."),
+             text: "Summer Drop **envoie** vos **ROM Nintendo 64** sur la carte SD de votre **SummerCart64**, et les **récupère**, directement depuis le Mac, par **USB-C**. Plus besoin de retirer la carte **microSD** ni d'ouvrir le **Terminal**."),
         Page(systemImage: "cable.connector", color: .green,
              title: "Branchez la cartouche",
-             text: "Reliez la SummerCart64 au Mac avec un câble USB-C, console éteinte. La pastille en haut à droite passe au vert dès que la cartouche est détectée."),
+             text: "Reliez la **SummerCart64** au Mac avec un câble **USB-C**, **console éteinte**. La pastille en haut à droite passe au **vert** dès que la cartouche est détectée."),
         Page(systemImage: "square.and.arrow.down.on.square", color: .orange,
              title: "Envoyez vos ROM",
-             text: "Glissez vos fichiers .z64, .n64 ou .v64 dans la zone de gauche, ou cliquez sur « Choisir des fichiers… ». Ils arrivent dans le dossier de la carte affiché à droite, avec une barre de progression."),
+             text: "**Glissez** vos fichiers **.z64**, **.n64** ou **.v64** dans la **zone de gauche**, ou cliquez sur **« Choisir des fichiers… »**. Ils arrivent dans le **dossier de la carte affiché à droite**, avec une barre de progression."),
         Page(systemImage: "arrow.down.to.line", color: .blue,
              title: "Récupérez-les sur le Mac",
-             text: "Dans la liste de la carte, cochez les ROM voulues (ou « Tout sélectionner »), puis cliquez sur « Récupérer » en bas. Elles arrivent dans le dossier affiché, par défaut « iCloud Drive › Documents › Jeux › Nintendo 64 ». Aucun fichier du Mac n'est jamais écrasé."),
+             text: "Dans la liste de la carte, **cochez** les ROM voulues (ou **« Tout sélectionner »**), puis cliquez sur **« Récupérer »** en bas. Elles arrivent dans le dossier affiché, par défaut **iCloud Drive › Documents › Jeux › Nintendo 64**. Aucun fichier du Mac n'est **jamais écrasé**."),
         Page(systemImage: "wrench.and.screwdriver.fill", color: .purple,
              title: "L'outil sc64deployer",
-             text: "Summer Drop s'appuie sur sc64deployer, l'outil officiel de la SummerCart64. Il est normalement inclus dans l'app. Vérifiez ci-dessous qu'il est bien trouvé."),
+             text: "Summer Drop s'appuie sur **sc64deployer**, l'**outil officiel** de la SummerCart64. Il est normalement **inclus dans l'app**. Vérifiez ci-dessous qu'il est bien **trouvé**."),
         Page(systemImage: "sparkles", color: .pink,
              title: "C'est parti !",
-             text: "Réglages avec ⌘, (thème clair ou sombre, dossier de téléchargement…), statistiques avec le bouton graphique, et mises à jour automatiques depuis GitHub. Pensez à éteindre la console avant chaque transfert."),
+             text: "**Réglages** avec **⌘,** (thème clair ou sombre, dossier de téléchargement…), **recherche** avec **⌘K**, **fiches de jeu** au survol d'un nom, **statistiques** avec le bouton graphique, et **mises à jour automatiques**. Pensez à **éteindre la console** avant chaque transfert."),
     ]
 
     private var isLast: Bool { step == pages.count - 1 }
@@ -65,7 +65,7 @@ struct OnboardingView: View {
 
                 Text(page.title)
                     .font(.title.weight(.bold))
-                Text(page.text)
+                Text(LocalizedStringKey(page.text))
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -83,15 +83,22 @@ struct OnboardingView: View {
                     Capsule()
                         .fill(index == step ? Color.primary : Color.secondary.opacity(0.35))
                         .frame(width: index == step ? 18 : 7, height: 7)
+                        .contentShape(Rectangle().inset(by: -4))
+                        .onTapGesture { go(index - step) }
                 }
             }
             .padding(.bottom, 18)
 
             HStack {
-                Button("Précédent") { go(-1) }
-                    .buttonStyle(.glass)
-                    .opacity(step == 0 ? 0 : 1)
-                    .disabled(step == 0)
+                Button {
+                    go(-1)
+                } label: {
+                    Label("Précédent", systemImage: "chevron.left")
+                }
+                .buttonStyle(.glass)
+                .keyboardShortcut(.leftArrow, modifiers: [])
+                .opacity(step == 0 ? 0 : 1)
+                .disabled(step == 0)
                 Spacer()
                 Button(isLast ? "Commencer" : "Suivant") {
                     if isLast { finish() } else { go(1) }
@@ -99,9 +106,20 @@ struct OnboardingView: View {
                 .buttonStyle(.glassProminent)
                 .keyboardShortcut(.defaultAction)
             }
+            .background(
+                // Flèche droite : page suivante (en plus de Entrée).
+                Button("") { if !isLast { go(1) } }
+                    .keyboardShortcut(.rightArrow, modifiers: [])
+                    .opacity(0)
+                    .allowsHitTesting(false)
+            )
+            Text("Astuce : utilisez les flèches ← → du clavier")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .padding(.top, 10)
         }
         .padding(28)
-        .frame(width: 580, height: 520)
+        .frame(width: 580, height: 540)
         .fileImporter(isPresented: $showToolPicker, allowedContentTypes: [.item], allowsMultipleSelection: false) { result in
             if case .success(let urls) = result, let url = urls.first {
                 model.useDeployer(at: url)

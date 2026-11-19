@@ -69,6 +69,7 @@ struct GeneralSettings: View {
     @AppStorage(AppearanceMode.storageKey) private var appearance: AppearanceMode = .system
     @AppStorage("lastDownloadFolder") private var downloadFolder = ""
     @State private var showFolderPicker = false
+    @AppStorage("gameCardsEnabled") private var cardsEnabled = true
 
     var body: some View {
         Form {
@@ -82,6 +83,20 @@ struct GeneralSettings: View {
                 Text("« Automatique » suit le réglage de macOS.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+
+            Section("Fiches de jeu") {
+                Toggle("Afficher la fiche d'un jeu au survol de son nom", isOn: $cardsEnabled)
+                HStack {
+                    Text("Jaquettes, captures et résumés sont gardés en cache sur le Mac.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Vider le cache") {
+                        Task { await GameInfoStore.shared.clearCache() }
+                        URLCache.shared.removeAllCachedResponses()
+                    }
+                }
             }
 
             Section("Aide") {

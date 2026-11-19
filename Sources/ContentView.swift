@@ -746,6 +746,24 @@ struct SDCardView: View {
 struct SDEntryRow: View {
     let entry: SDEntry
     var isSelected = false
+    @AppStorage("gameCardsEnabled") private var cardsEnabled = true
+    @State private var showCard = false
+    @State private var nameHovered = false
+    @State private var cardHovered = false
+    @State private var hoverTask: Task<Void, Never>?
+    private let ratings = RatingStore.shared
+
+    /// Survol du nom : la fiche apparaît après un court délai et reste ouverte
+    /// tant que la souris est sur le nom ou sur la fiche.
+    private func updateHover() {
+        hoverTask?.cancel()
+        let wanted = nameHovered || cardHovered
+        hoverTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(wanted ? 650 : 350))
+            guard !Task.isCancelled else { return }
+            showCard = (nameHovered || cardHovered) && cardsEnabled
+        }
+    }
 
     var body: some View {
         HStack(spacing: 10) {
@@ -768,6 +786,22 @@ struct SDEntryRow: View {
             Text(entry.name)
                 .lineLimit(1)
                 .truncationMode(.middle)
+                .underline(nameHovered && entry.isROM && cardsEnabled, color: .secondary)
+                .onHover { inside in
+                    guard entry.isROM else { return }
+                    nameHovered = inside
+                    updateHover()
+                }
+                .popover(isPresented: $showCard, arrowEdge: .leading) {
+                    GameCardView(entry: entry)
+                        .onHover { inside in
+                            cardHovered = inside
+                            updateHover()
+                        }
+                }
+            if entry.isROM, ratings.rating(for: entry.name) > 0 {
+                StarRatingView(rating: ratings.rating(for: entry.name), size: 9)
+            }
             Spacer()
             Text(entry.sizeText)
                 .font(.callout.monospacedDigit())
