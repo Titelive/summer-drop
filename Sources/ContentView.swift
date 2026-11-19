@@ -51,6 +51,23 @@ struct ContentView: View {
     }
 }
 
+// MARK: - Bords adoucis des listes
+
+extension View {
+    /// Fond progressif en haut et en bas d'une liste qui défile : plus de ligne coupée net.
+    func softEdges(_ size: CGFloat = 14) -> some View {
+        mask(
+            VStack(spacing: 0) {
+                LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
+                    .frame(height: size)
+                Rectangle().fill(.black)
+                LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
+                    .frame(height: size)
+            }
+        )
+    }
+}
+
 // MARK: - Fond
 
 struct SummerBackground: View {
@@ -460,7 +477,8 @@ struct UploadQueueView: View {
 
                 ScrollView {
                     LazyVStack(spacing: 8) {
-                        ForEach(model.queue) { item in
+                        // Le plus récent en haut : il reste toujours visible.
+                        ForEach(model.queue.reversed()) { item in
                             UploadRow(item: item, fileProgress: model.currentFileProgress)
                                 .transition(.asymmetric(
                                     insertion: .move(edge: .top).combined(with: .opacity),
@@ -469,7 +487,10 @@ struct UploadQueueView: View {
                         }
                     }
                     .animation(.spring(duration: 0.4), value: model.queue)
+                    .padding(.vertical, 6)
                 }
+                .scrollIndicators(.automatic)
+                .softEdges()
             }
         }
         .padding(18)
@@ -604,11 +625,20 @@ struct SDCardView: View {
                     .help(model.currentPath)
                 Spacer()
                 if model.isConnected && model.listError == nil && model.entries.contains(where: { !$0.isDirectory }) {
-                    Button(model.allFilesSelected ? "Tout désélectionner" : "Tout sélectionner") {
+                    Button {
                         model.toggleSelectAll()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text(model.allFilesSelected ? "Tout désélectionner" : "Tout sélectionner")
+                            Text("⌘A")
+                                .font(.caption.monospaced())
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     .buttonStyle(.glass)
                     .controlSize(.small)
+                    // ⌘A garde son rôle habituel quand on écrit dans la recherche.
+                    .keyboardShortcut(searchFocused ? nil : KeyboardShortcut("a", modifiers: .command))
                 }
             }
 
@@ -757,7 +787,9 @@ struct SDCardView: View {
                             }
                     }
                 }
+                .padding(.vertical, 6)
             }
+            .softEdges()
         }
     }
 
