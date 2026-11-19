@@ -35,7 +35,7 @@ struct OnboardingView: View {
              text: L("Summer Drop relies on **sc64deployer**, the SummerCart64's **official tool**. It normally **comes with the app**. Check below that it is **found**.")),
         Page(systemImage: "sparkles", color: .pink,
              title: L("Let's go!"),
-             text: L("**Settings** with **⌘,** (language, light or dark theme, download folder…), **search** with **⌘K**, **game cards** when hovering a name, **sort and group** from the list menu, **statistics** with the chart button, and **automatic updates**. Remember to **turn the console off** before each transfer.")),
+             text: L("**Settings** with **⌘,** (language, light or dark theme, download folder…), **search** with **⌘K**, **game cards** when hovering a name, **sort and group** with the **↑↓** button, **statistics** with the chart button, and **automatic updates**. Remember to **turn the console off** before each transfer.")),
     ] }
 
     private var isLast: Bool { step == pages.count - 1 }
