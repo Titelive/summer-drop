@@ -12,16 +12,48 @@ A native Mac app (SwiftUI, macOS 26 Liquid Glass) to send N64 ROMs to the SD car
 - **Your own star ratings** (1 to 5), stored on the Mac.
 - **Progress** per file and overall, **notifications** when transfers finish, when the cartridge is plugged or unplugged, and when an update is ready.
 - **Statistics**: ROMs sent and retrieved, volumes, average speeds.
-- **Settings** (⌘,): Automatic / Light / Dark theme, download folder, `sc64deployer` location, notifications, game cards, updates.
-- **Welcome tutorial** on first launch (arrow keys to navigate, ⌘↩ to finish), available again from the Help menu.
+- **8 languages**: English, Français, Español, Deutsch, Italiano, Português, 日本語, 简体中文. Follows your Mac, or pick one in the tutorial or in Settings; it switches instantly.
+- **Sort and group** each pane (↑↓ button): by name, size, date, rating or region; groups by first letter, region, rating or format.
+- **Settings** (⌘,): language, Automatic / Light / Dark theme, download folder, `sc64deployer` location, notifications, game cards, updates.
+- **Welcome tutorial** on first launch, starting with the language choice (arrow keys to navigate, ⌘↩ to finish), available again from the Help menu.
 - **Automatic updates** from GitHub Releases.
 - Never overwrites a file on the Mac. Refuses to touch the SD card while the console is on.
 
 ## Install
 
-Download **SummerDrop.dmg** from the [latest release](https://github.com/Titelive/summer-drop/releases/latest), open it and drag **Summer Drop** to Applications. `sc64deployer` is bundled.
+Download **SummerDrop.dmg** from the [latest release](https://github.com/Titelive/summer-drop/releases/latest). `sc64deployer` is bundled, there is nothing else to install.
 
-The app is not notarized by Apple, so macOS blocks the very first launch: open System Settings › Privacy & Security and click **Open Anyway** (or run `xattr -cr "/Applications/Summer Drop.app"`). Later updates install without asking again.
+### Opening the app the first time
+
+Summer Drop is free and is not notarized by Apple (that needs a paid developer account), so macOS asks you to confirm the very first launch. It takes one minute and only happens once: later updates install without asking again.
+
+**1. Install the app.** Double-click `SummerDrop.dmg`, then drag **Summer Drop** onto the **Applications** folder.
+
+![Drag Summer Drop onto Applications](docs/images/first-launch-en-1-install.jpg)
+
+**2. Open it once.** Double-click **Summer Drop** in Applications. macOS says it could not verify the app. Click **Done** (not *Move to Trash*).
+
+![The “Summer Drop” Not Opened alert](docs/images/first-launch-en-2-blocked.jpg)
+
+**3. Allow it in System Settings.** Open the Apple menu  › **System Settings** › **Privacy & Security** and scroll down to **Security**. Next to *“Summer Drop” was blocked to protect your Mac*, click **Open Anyway**. The button stays there for about an hour after step 2.
+
+![Open Anyway in Privacy & Security](docs/images/first-launch-en-3-open-anyway.jpg)
+
+**4. Confirm.** Click **Open Anyway** again, then enter your Mac password or use Touch ID. Summer Drop opens on its welcome tutorial, where you pick your language.
+
+![Confirm with Open Anyway](docs/images/first-launch-en-4-confirm.jpg)
+
+<details>
+<summary>Prefer the Terminal?</summary>
+
+This one command does steps 2 to 4 at once:
+
+```sh
+xattr -dr com.apple.quarantine "/Applications/Summer Drop.app"
+```
+</details>
+
+> The pictures above are illustrations. The exact look of the macOS windows can differ slightly.
 
 **Requirements:** Apple silicon Mac, **macOS 26** or later, SummerCart64 firmware 2.20.0 or later.
 
