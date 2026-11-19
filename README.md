@@ -1,101 +1,85 @@
 # ☀️ Summer Drop
 
-Petite app Mac native (SwiftUI, style Liquid Glass de macOS 26) pour envoyer des ROM N64 sur la carte SD d'une [SummerCart64](https://github.com/Polprzewodnikowy/SummerCart64) par USB-C, sans passer par le Terminal.
+**English** · [Français](README.fr.md)
 
-Elle remplace « SC64 Envoi » (version 1, script bash + boîtes de dialogue AppleScript).
+A native Mac app (SwiftUI, macOS 26 Liquid Glass) to send N64 ROMs to the SD card of a [SummerCart64](https://github.com/Polprzewodnikowy/SummerCart64) over USB-C, and get them back, without the Terminal and without pulling the microSD card.
 
-## Ce qu'elle fait
+## Features
 
-- **Glisser-déposer** : déposez une ou plusieurs ROM dans la zone de gauche (ou cliquez sur « Choisir des fichiers… »). Elles partent dans le dossier de la carte affiché à droite.
-- **Contenu de la carte SD** : liste des fichiers et dossiers, double-clic pour ouvrir un dossier, flèche pour remonter, bouton pour actualiser.
-- **Progression** : barre par fichier et barre totale.
-- **État de la cartouche** : pastille verte / rouge, vérifiée toutes les 3 secondes.
-- **Récupération** : cochez des ROM dans la liste de la carte (ou « Tout sélectionner »), puis **Récupérer** en bas du panneau. Elles arrivent dans le dossier affiché (par défaut `iCloud Drive/Documents/Jeux/Nintendo 64`), modifiable avec « Changer… ». Un fichier existant n'est jamais écrasé.
-- **Réglages** (⌘,) : thème Automatique / Clair / Sombre, dossier de téléchargement, emplacement de `sc64deployer`, mises à jour, statistiques.
-- **Statistiques** : ROM envoyées et récupérées, volumes, vitesses moyennes, contenu du dossier affiché. Tout reste sur le Mac.
-- **À propos** : crédits, recherche manuelle de mises à jour.
+- **Two panes**: a folder of your Mac on the left (default `iCloud Drive › Documents › Jeux › Nintendo 64`), the cartridge SD card on the right. Drag ROMs from one to the other, or from the Finder. Whole folders are accepted.
+- **Keyboard**: click a pane, then **⌘A** select all, **⌘C** copy, **⌘X** move (always confirmed; Mac files go to the Trash), **⌘V** paste into the other pane. **⌘K** search.
+- **Game cards** on hover: box art, title screen, screenshot, year, developer, publisher, genres, Wikipedia summary, region, languages, size and format. When a ROM name is unusual, alternate titles from Wikidata are used, then Apple's on-device model as a last resort (no API key, nothing leaves the Mac).
+- **Your own star ratings** (1 to 5), stored on the Mac.
+- **Progress** per file and overall, **notifications** when transfers finish, when the cartridge is plugged or unplugged, and when an update is ready.
+- **Statistics**: ROMs sent and retrieved, volumes, average speeds.
+- **Settings** (⌘,): Automatic / Light / Dark theme, download folder, `sc64deployer` location, notifications, game cards, updates.
+- **Welcome tutorial** on first launch (arrow keys to navigate, ⌘↩ to finish), available again from the Help menu.
+- **Automatic updates** from GitHub Releases.
+- Never overwrites a file on the Mac. Refuses to touch the SD card while the console is on.
 
-## Prérequis
+## Install
 
-- Mac Apple Silicon sous **macOS 26** (Tahoe) ou plus récent.
-- **Xcode 26** ou les **Command Line Tools** à jour (`xcode-select --install`). Le SDK macOS 26 est indispensable pour Liquid Glass.
-- L'outil **`sc64deployer`** (firmware SC64 2.20.0 ou plus).
+Download **SummerDrop.dmg** from the [latest release](https://github.com/Titelive/summer-drop/releases/latest), open it and drag **Summer Drop** to Applications. `sc64deployer` is bundled.
 
-## Installer
+The app is not notarized by Apple, so macOS blocks the very first launch: open System Settings › Privacy & Security and click **Open Anyway** (or run `xattr -cr "/Applications/Summer Drop.app"`). Later updates install without asking again.
 
-Téléchargez **SummerDrop.dmg** dans la [dernière version](https://github.com/Titelive/summer-drop/releases/latest), ouvrez-le et glissez **Summer Drop** dans Applications (ou dans `Jeux/Analogue 3D`). `sc64deployer` est déjà inclus dans l'app.
+**Requirements:** Apple silicon Mac, **macOS 26** or later, SummerCart64 firmware 2.20.0 or later.
 
-Au premier lancement, macOS bloque l'app car elle n'est pas notariée par Apple. Allez dans Réglages Système → Confidentialité et sécurité, puis cliquez sur **Ouvrir quand même** en bas de la page. Autre solution, dans le Terminal : `xattr -cr "/Applications/Summer Drop.app"`. Les mises à jour automatiques suivantes ne redemandent rien.
+## Automatic updates
 
-## Mises à jour automatiques
+The app checks GitHub at launch and every 6 hours (or **Summer Drop › Check for Updates…**). When a newer version exists, it downloads the disk image and shows **"Version X ready · Restart"**. If you don't click, it installs when you quit the app.
 
-L'app vérifie les nouvelles versions publiées sur GitHub au lancement, puis toutes les 6 heures (menu **Summer Drop → Rechercher des mises à jour…** pour le faire à la main). Quand une version plus récente existe, elle télécharge l'image disque et affiche **« Version X prête · Redémarrer »**. Si vous ne cliquez pas, la mise à jour s'installe quand vous quittez l'app.
+### Publishing a version
 
-Le dépôt doit être **public** pour que l'app puisse lire les versions sans identifiants.
+On GitHub: **Actions › Compiler et publier › Run workflow**, type a version number such as `1.5.0`, and run. GitHub Actions builds the app on a macOS 26 runner, bundles the latest official `sc64deployer`, creates `SummerDrop.dmg` and publishes the release. Installed apps then offer it on their own.
 
-### Publier une nouvelle version
+## Build it yourself
 
-Sur GitHub : onglet **Actions** → **Compiler et publier** → **Run workflow**, tapez le numéro (par exemple `1.1.0`) et validez. Ou bien, en ligne de commande :
-
-```bash
-git tag v1.1.0
-git push origin v1.1.0
-```
-
-GitHub Actions compile l'app sur un Mac (macOS 26), y inclut le dernier `sc64deployer` officiel, crée `SummerDrop.dmg` et publie la version. Toutes les apps installées la proposeront ensuite d'elles-mêmes.
-
-## Compiler soi-même
-
-Dans le Terminal :
+Requires Xcode 26 or up-to-date Command Line Tools (`xcode-select --install`).
 
 ```bash
-cd "/chemin/vers/summer-drop"
-./build.sh
+./build.sh              # build/Summer Drop.app
+./build.sh --dmg        # also build/SummerDrop.dmg
+./build.sh --install    # build and copy to iCloud Drive/Documents/Jeux/Analogue 3D
 ```
 
-L'app est créée dans `build/Summer Drop.app`.
+`build.sh` bundles `sc64deployer` if it finds it next to the project or in `iCloud Drive/Documents/Jeux/Analogue 3D/`, then signs the app ad hoc.
 
-Pour créer aussi l'image disque `build/SummerDrop.dmg` :
+## Where the app looks for `sc64deployer`
 
-```bash
-./build.sh --dmg
-```
+1. the path chosen in Settings or the tutorial;
+2. next to the app;
+3. inside the app (`Contents/Resources`);
+4. `iCloud Drive/Documents/Jeux/Analogue 3D/sc64deployer`;
+5. `/opt/homebrew/bin`, then `/usr/local/bin`.
 
-Pour la compiler **et** la copier directement dans `iCloud Drive/Documents/Jeux/Analogue 3D/` :
+## Good to know
 
-```bash
-./build.sh --install
-```
+- **Turn the console off** before accessing the SD card.
+- `sc64deployer` does not report progress during a transfer, so progress bars are **estimated** from file size and the speed measured on earlier transfers. They reach 100% only when the transfer really ends.
+- Sending a file with the same name as one on the card **replaces** it.
 
-Le script cherche `sc64deployer` dans le dossier du projet, dans le dossier parent, puis dans `iCloud Drive/Documents/Jeux/Analogue 3D/`, et le copie dans l'app (`Contents/Resources`). Il retire la quarantaine et signe l'app localement (signature « ad hoc »).
-
-## Où l'app cherche `sc64deployer`
-
-Dans cet ordre :
-
-1. le chemin choisi avec le bouton « Localiser sc64deployer… » (mémorisé) ;
-2. à côté de l'app ;
-3. dans l'app (`Contents/Resources`) ;
-4. `iCloud Drive/Documents/Jeux/Analogue 3D/sc64deployer` ;
-5. `/opt/homebrew/bin` puis `/usr/local/bin`.
-
-## Bon à savoir
-
-- **Éteignez la console** avant d'accéder à la carte. Si elle est allumée, `sc64deployer` refuse l'accès et l'app l'affiche clairement au lieu de forcer.
-- `sc64deployer` n'indique pas d'avancement pendant un envoi : la barre de progression est **estimée** à partir de la taille du fichier et du débit mesuré aux envois précédents. Elle passe à 100 % quand l'envoi est réellement terminé.
-- Un fichier qui porte le même nom qu'un fichier de la carte le **remplace**.
-
-## Structure
+## Project layout
 
 ```
 Sources/
-  SummerDropApp.swift   point d'entrée, fenêtre
-  ContentView.swift     interface (Liquid Glass)
-  AppModel.swift        état, file d'envoi, détection de la cartouche
-  Deployer.swift        appel de sc64deployer et lecture de ses réponses
-  Updater.swift         mises à jour automatiques via GitHub Releases
-.github/workflows/      compilation et publication automatiques
-Info.plist              métadonnées de l'app
-AppIcon.icns            icône
-build.sh                script de compilation
+  SummerDropApp.swift    entry point, windows, menus
+  ContentView.swift      main window (Liquid Glass)
+  MacPanelView.swift     Mac pane, drag and drop
+  AppModel.swift         state, transfer queue, cartridge detection, clipboard
+  Deployer.swift         runs sc64deployer and parses its output
+  GameInfoService.swift  game cards (Wikipedia, Wikidata, libretro thumbnails)
+  ThumbnailIndex.swift   thumbnail lookup, on-device AI fallback
+  GameCardView.swift     game card and star ratings
+  Updater.swift          automatic updates from GitHub Releases
+  Notifier.swift         macOS notifications
+  SettingsView.swift, OnboardingView.swift, AboutView.swift, StatsView.swift, CreatorViews.swift
+Tools/GameInfoCheck.swift   CI check of the online game card sources
+build.sh                    build script
 ```
+
+## Credits
+
+Made by [Titelive](https://titelive.me/prestations/) · [Buy me a coffee](https://buymeacoffee.com/titelive) ☕
+SummerCart64 and `sc64deployer` by Mateusz Faderewski ([Polprzewodnikowy](https://github.com/Polprzewodnikowy/SummerCart64)).
+Not affiliated with Nintendo or Analogue.
