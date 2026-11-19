@@ -12,10 +12,30 @@ actor ThumbnailIndex {
         var boxarts: Set<String> = []
         var titles: Set<String> = []
         var snaps: Set<String> = []
+        /// "Kind/name" of images that are git symlinks to another image (e.g. a Rev 1 pointing to the original).
+        var links: Set<String> = []
         var fetched = Date.distantPast
     }
 
     private var names: Names?
+    private var resolvedLinks: [String: String] = [:]
+
+    /// The real image name: follows libretro's symlinks, which raw.githubusercontent.com
+    /// serves as a tiny text file holding the target's name instead of the picture.
+    func resolve(kind: String, name: String) async -> String {
+        let key = kind + "/" + name
+        guard let names = await load(), names.links.contains(key) else { return name }
+        if let known = resolvedLinks[key] { return known }
+        guard let url = GameInfoStore.thumbnailURL(kind: kind, romName: name),
+              let (data, _) = try? await URLSession.shared.data(from: url),
+              data.count < 1024,
+              let text = String(data: data, encoding: .utf8) else { return name }
+        let file = (text.trimmingCharacters(in: .whitespacesAndNewlines) as NSString).lastPathComponent
+        let target = (file as NSString).deletingPathExtension
+        guard !target.isEmpty else { return name }
+        resolvedLinks[key] = target
+        return target
+    }
     private var loading: Task<Names?, Never>?
 
     private var cacheFile: URL {
@@ -61,6 +81,7 @@ actor ThumbnailIndex {
             let parts = path.split(separator: "/", maxSplits: 1).map(String.init)
             guard parts.count == 2 else { continue }
             let name = String(parts[1].dropLast(4))
+            if item["mode"] as? String == "120000" { names.links.insert(parts[0] + "/" + name) }
             switch parts[0] {
             case "Named_Boxarts": names.boxarts.insert(name)
             case "Named_Titles": names.titles.insert(name)

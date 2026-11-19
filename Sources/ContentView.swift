@@ -672,9 +672,13 @@ struct SDCardView: View {
                             model.goUp()
                         } label: {
                             Image(systemName: "chevron.left")
+                                .foregroundStyle(.primary)
+                                .frame(width: 16, height: 16)
                         }
                         .buttonStyle(.glass)
-                        .disabled(model.currentPath == "/" || model.isLoadingList || model.isUploading)
+                        // Dimmed rather than disabled: a disabled glass button hides its icon.
+                        .opacity(model.currentPath == "/" ? 0.45 : 1)
+                        .allowsHitTesting(!(model.currentPath == "/" || model.isLoadingList || model.isUploading))
                         .help(L("Parent folder"))
 
                         SortMenu(options: Binding(get: { model.cardSort }, set: { model.cardSort = $0 }))

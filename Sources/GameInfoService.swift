@@ -39,7 +39,7 @@ actor GameInfoStore {
     private var cacheDirectory: URL {
         let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
-        let dir = base.appendingPathComponent("SummerDrop/GameInfo/\(AppLanguage.current.rawValue)", isDirectory: true)
+        let dir = base.appendingPathComponent("SummerDrop/GameInfo2/\(AppLanguage.current.rawValue)", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }
@@ -91,7 +91,8 @@ actor GameInfoStore {
         )
         var url: URL?
         if let match, names.boxarts.contains(match.name) {
-            url = Self.thumbnailURL(kind: "Named_Boxarts", romName: match.name)
+            let real = await ThumbnailIndex.shared.resolve(kind: "Named_Boxarts", name: match.name)
+            url = Self.thumbnailURL(kind: "Named_Boxarts", romName: real)
         }
         boxartMemo[romName] = .some(url)
         return url
@@ -119,9 +120,16 @@ actor GameInfoStore {
             )
             if let (match, viaAI) = result {
                 info.imagesFoundByAI = viaAI
-                if names.boxarts.contains(match) { info.boxartURL = thumbnailURL(kind: "Named_Boxarts", romName: match) }
-                if names.titles.contains(match) { info.titleScreenURL = thumbnailURL(kind: "Named_Titles", romName: match) }
-                if names.snaps.contains(match) { info.snapURL = thumbnailURL(kind: "Named_Snaps", romName: match) }
+                let index = ThumbnailIndex.shared
+                if names.boxarts.contains(match) {
+                    info.boxartURL = thumbnailURL(kind: "Named_Boxarts", romName: await index.resolve(kind: "Named_Boxarts", name: match))
+                }
+                if names.titles.contains(match) {
+                    info.titleScreenURL = thumbnailURL(kind: "Named_Titles", romName: await index.resolve(kind: "Named_Titles", name: match))
+                }
+                if names.snaps.contains(match) {
+                    info.snapURL = thumbnailURL(kind: "Named_Snaps", romName: await index.resolve(kind: "Named_Snaps", name: match))
+                }
             }
         } else {
             // Index indisponible : on tente le nom exact.

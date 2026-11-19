@@ -21,7 +21,7 @@ struct ViewModeButton: View {
             }
         } label: {
             Image(systemName: mode == .list ? "square.grid.2x2" : "list.bullet")
-                .contentTransition(.symbolEffect(.replace))
+                .foregroundStyle(.primary)
                 .frame(width: 16, height: 16)
         }
         .buttonStyle(.glass)
