@@ -956,9 +956,17 @@ struct SDEntryRow: View {
                 }
             }
             .frame(width: 18)
-            Image(systemName: iconName)
-                .foregroundStyle(iconColor)
-                .frame(width: 22)
+            Group {
+                if entry.isROM, let emoji = GameEmojiStore.shared.emoji(for: entry.name) {
+                    Text(emoji)
+                        .font(.system(size: 15))
+                        .transition(.scale.combined(with: .opacity))
+                } else {
+                    Image(systemName: iconName)
+                        .foregroundStyle(iconColor)
+                }
+            }
+            .frame(width: 22)
             Text(entry.name)
                 .lineLimit(1)
                 .truncationMode(.middle)

@@ -112,6 +112,7 @@ struct GeneralSettings: View {
                     Spacer()
                     Button(L("Clear Cache")) {
                         Task { await GameInfoStore.shared.clearCache() }
+                        GameEmojiStore.shared.clear()
                         URLCache.shared.removeAllCachedResponses()
                     }
                 }
