@@ -44,24 +44,41 @@ struct StarRatingView: View {
     var onSet: ((Int) -> Void)?
     @State private var hovered = 0
 
+    private var spacing: CGFloat { size * 0.25 }
+    private var cell: CGFloat { size * 1.15 }
+    private var shown: Int { hovered > 0 ? hovered : rating }
+
     var body: some View {
-        HStack(spacing: size * 0.2) {
+        HStack(spacing: spacing) {
             ForEach(1...5, id: \.self) { index in
-                let filled = index <= (hovered > 0 ? hovered : rating)
-                Image(systemName: filled ? "star.fill" : "star")
-                    .font(.system(size: size))
-                    .foregroundStyle(filled ? Color.yellow : Color.secondary.opacity(0.6))
-                    .scaleEffect(hovered == index ? 1.2 : 1)
-                    .contentTransition(.symbolEffect(.replace))
-                    .onHover { inside in
-                        guard onSet != nil else { return }
-                        hovered = inside ? index : (hovered == index ? 0 : hovered)
-                    }
-                    .onTapGesture { onSet?(index) }
+                let filled = index <= shown
+                // Each star keeps the same size and place: only the yellow fill fades and grows in.
+                ZStack {
+                    Image(systemName: "star")
+                        .foregroundStyle(Color.secondary.opacity(0.55))
+                    Image(systemName: "star.fill")
+                        .foregroundStyle(Color.yellow.opacity(hovered > 0 && index > rating ? 0.6 : 1))
+                        .scaleEffect(filled ? 1 : 0.4)
+                        .opacity(filled ? 1 : 0)
+                }
+                .font(.system(size: size))
+                .frame(width: cell, height: cell)
+                .contentShape(Rectangle())
+                .onTapGesture { onSet?(index) }
             }
         }
-        .animation(.spring(duration: 0.25), value: hovered)
-        .animation(.spring(duration: 0.25), value: rating)
+        // One hover zone for the whole row of stars: no flicker in the gaps between them.
+        .onContinuousHover { phase in
+            guard onSet != nil else { return }
+            switch phase {
+            case .active(let point):
+                hovered = min(max(Int(point.x / (cell + spacing)) + 1, 1), 5)
+            case .ended:
+                hovered = 0
+            }
+        }
+        .animation(.easeOut(duration: 0.12), value: hovered)
+        .animation(.spring(duration: 0.3, bounce: 0.35), value: rating)
         .accessibilityElement()
         .accessibilityLabel(L("{0} star{1} out of 5", "\(rating)", "\(rating > 1 ? "s" : "")"))
     }

@@ -968,17 +968,13 @@ struct SDEntryRow: View {
                     nameHovered = inside
                     updateHover()
                 }
-                .popover(isPresented: $showCard, arrowEdge: .leading) {
-                    GameCardView(entry: entry)
-                        .onHover { inside in
-                            cardHovered = inside
-                            updateHover()
-                        }
-                }
-            if entry.isROM, ratings.rating(for: entry.name) > 0 {
+            Spacer(minLength: 6)
+            // Fixed slot for the stars: giving a rating never changes the name's width.
+            if entry.isROM {
                 StarRatingView(rating: ratings.rating(for: entry.name), size: 9)
+                    .opacity(ratings.rating(for: entry.name) > 0 ? 1 : 0)
+                    .animation(.easeOut(duration: 0.2), value: ratings.rating(for: entry.name))
             }
-            Spacer()
             Text(entry.sizeText)
                 .font(.callout.monospacedDigit())
                 .foregroundStyle(.secondary)
@@ -999,6 +995,14 @@ struct SDEntryRow: View {
                 .strokeBorder(Color.white.opacity(isSelected ? 0.6 : 0), lineWidth: 1)
         )
         .animation(.easeOut(duration: 0.15), value: isSelected)
+        // Anchored on the whole row, which never moves: the card stays put while you rate.
+        .popover(isPresented: $showCard, arrowEdge: .leading) {
+            GameCardView(entry: entry)
+                .onHover { inside in
+                    cardHovered = inside
+                    updateHover()
+                }
+        }
         .help(entry.isDirectory ? L("Double-click to open") : L("Click to check, then “Retrieve” below"))
     }
 
