@@ -513,6 +513,7 @@ struct UploadRow: View {
 struct SDCardView: View {
     let model: AppModel
     @State private var showFolderPicker = false
+    @FocusState private var searchFocused: Bool
 
     /// Récupère directement dans le dossier de destination affiché en bas du panneau.
     private func retrieve(_ files: [SDEntry]) {
@@ -527,7 +528,9 @@ struct SDCardView: View {
                     .foregroundStyle(.orange)
                 Text("Carte SD « SC64 »")
                     .font(.headline)
-                Spacer()
+                    .layoutPriority(1)
+                Spacer(minLength: 8)
+                searchField
                 GlassEffectContainer(spacing: 8) {
                     HStack(spacing: 8) {
                         Button {
@@ -594,6 +597,50 @@ struct SDCardView: View {
         .fileDialogConfirmationLabel("Choisir ce dossier")
     }
 
+    /// Champ de recherche (⌘K pour y aller, Échap pour effacer).
+    private var searchField: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField("Rechercher", text: Binding(
+                get: { model.searchText },
+                set: { model.searchText = $0 }
+            ))
+            .textFieldStyle(.plain)
+            .focused($searchFocused)
+            .onExitCommand {
+                model.searchText = ""
+                searchFocused = false
+            }
+            if model.searchText.isEmpty {
+                Text("⌘K")
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.tertiary)
+            } else {
+                Button {
+                    model.searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Effacer la recherche")
+            }
+        }
+        .padding(.horizontal, 12)
+        .frame(width: 220, height: 30)
+        .glassEffect(Glass.regular.interactive(), in: .capsule)
+        .disabled(!model.isConnected)
+        .background(
+            // Raccourci ⌘K : place le curseur dans la recherche.
+            Button("") { searchFocused = true }
+                .keyboardShortcut("k", modifiers: .command)
+                .opacity(0)
+                .allowsHitTesting(false)
+        )
+        .animation(.snappy, value: model.searchText.isEmpty)
+    }
+
     /// Barre « De la carte vers le Mac », symétrique de la zone de dépôt.
     private var retrieveBar: some View {
         let count = model.selectedFiles.count
@@ -650,16 +697,18 @@ struct SDCardView: View {
             ProgressView("Lecture de la carte…")
         } else if let error = model.listError {
             placeholder(systemImage: "exclamationmark.triangle", title: "Lecture impossible", detail: error)
+        } else if !model.entries.isEmpty && model.visibleEntries.isEmpty {
+            placeholder(systemImage: "magnifyingglass", title: "Aucun résultat", detail: "Aucun fichier ne contient « \(model.searchText) » dans ce dossier.")
         } else if model.entries.isEmpty {
             placeholder(systemImage: "tray", title: "Dossier vide", detail: "Déposez des ROM à gauche pour les envoyer ici.")
         } else {
             ScrollView {
                 LazyVStack(spacing: 4) {
-                    ForEach(Array(model.entries.enumerated()), id: \.element.id) { index, entry in
+                    ForEach(Array(model.visibleEntries.enumerated()), id: \.element.id) { index, entry in
                         SDEntryRow(entry: entry, isSelected: model.selection.contains(entry.name))
                             .contentShape(Rectangle())
                             .transition(.opacity.combined(with: .offset(y: 8)))
-                            .animation(.spring(duration: 0.4).delay(Double(min(index, 12)) * 0.025), value: model.entries)
+                            .animation(.spring(duration: 0.4).delay(Double(min(index, 12)) * 0.025), value: model.visibleEntries)
                             .onTapGesture(count: 2) { model.open(entry) }
                             .onTapGesture(count: 1) { model.toggleSelection(entry) }
                             .contextMenu {

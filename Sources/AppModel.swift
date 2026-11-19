@@ -47,6 +47,14 @@ final class AppModel {
 
     var queue: [UploadItem] = []
     var selection: Set<String> = []
+    var searchText = ""
+
+    /// Entrées affichées, filtrées par la recherche.
+    var visibleEntries: [SDEntry] {
+        let query = searchText.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return entries }
+        return entries.filter { $0.name.localizedStandardContains(query) }
+    }
     /// Incrémenté quand le dossier de téléchargement change, pour rafraîchir l'affichage.
     var downloadFolderVersion = 0
     var isUploading = false
@@ -168,6 +176,7 @@ final class AppModel {
         guard entry.isDirectory, !isLoadingList else { return }
         currentPath = Self.join(currentPath, entry.name)
         selection = []
+        searchText = ""
         Task { await refreshList() }
     }
 
@@ -176,6 +185,7 @@ final class AppModel {
         let parent = (currentPath as NSString).deletingLastPathComponent
         currentPath = parent.isEmpty ? "/" : parent
         selection = []
+        searchText = ""
         Task { await refreshList() }
     }
 
@@ -223,7 +233,7 @@ final class AppModel {
     }
 
     var allFilesSelected: Bool {
-        let files = entries.filter { !$0.isDirectory }
+        let files = visibleEntries.filter { !$0.isDirectory }
         return !files.isEmpty && files.allSatisfy { selection.contains($0.name) }
     }
 
@@ -231,7 +241,7 @@ final class AppModel {
         if allFilesSelected {
             selection = []
         } else {
-            selection = Set(entries.filter { !$0.isDirectory }.map(\.name))
+            selection = Set(visibleEntries.filter { !$0.isDirectory }.map(\.name))
         }
     }
 
