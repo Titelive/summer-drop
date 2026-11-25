@@ -1,10 +1,11 @@
 name: Compiler et publier
 
+# Mac de GitHub facturés à la minute (le plus cher des runners) : une seule compilation par version
+# (choix de Titelive, 25/11/2026). Plus de compilation sur main ni sur les PR : elles ne publiaient rien.
+# Pour une simple compilation d'essai, lancer le workflow à la main sans numéro de version.
 on:
   push:
     tags: ["v*"]
-    branches: [main]
-  pull_request:
   workflow_dispatch:
     inputs:
       version:
