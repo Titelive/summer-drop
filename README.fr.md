@@ -1,8 +1,21 @@
-# ☀️ Summer Drop
+<p align="center"><img src="docs/images/icon.png" width="128" height="128" alt="Icône de l'app Summer Drop"></p>
+
+# Summer Drop
 
 [English](README.md) · **Français**
 
 App Mac native (SwiftUI, Liquid Glass de macOS 26) pour envoyer des ROM N64 sur la carte SD d'une [SummerCart64](https://github.com/Polprzewodnikowy/SummerCart64) par USB-C, et les récupérer, sans Terminal et sans retirer la microSD.
+
+**Site :** [titelive.me/summer-drop](https://titelive.me/summer-drop/)
+
+## Captures
+
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/window-fr-dark.jpg"><img src="docs/images/window-fr-light.jpg" width="520" alt="La fenêtre de Summer Drop : un dossier du Mac à gauche, la carte SD de la cartouche à droite, un transfert en cours et la fiche d'un jeu"></picture>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/card-fr-dark.jpg"><img src="docs/images/card-fr-light.jpg" width="450" alt="Une fiche de jeu : jaquette, écran-titre, année, studio, genre, région, résumé et note en étoiles"></picture>
+</p>
+
+> L'apparence claire ou sombre suit celle du Mac. Images tirées du [site](https://titelive.me/summer-drop/).
 
 ## Fonctions
 
