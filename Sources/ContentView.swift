@@ -32,9 +32,11 @@ struct ContentView: View {
                         .animation(.spring(duration: 0.4), value: model.queue.isEmpty)
                 }
 
+                // Signature Titelive en bas à gauche (la barre complète reste dans « À propos »)
                 HStack {
+                    TiteliveSignature(appName: "Summer Drop", showsCoffee: true)
+                        .fixedSize()
                     Spacer()
-                    CreatorBar()
                 }
             }
             .padding(20)
