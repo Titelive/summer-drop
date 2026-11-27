@@ -228,6 +228,16 @@ struct HeaderBar: View {
 
                 UpdatePill(updater: updater, isUploading: model.isUploading)
 
+                // Un clic : clair ↔ sombre ; chevron : Automatique / Clair / Sombre (même clé que les Réglages)
+                ThemeToggleButton(storageKey: AppearanceMode.storageKey, fades: false) { choice in
+                    (choice == .light ? AppearanceMode.light : choice == .dark ? .dark : .system).apply()
+                }
+                .labelStyle(.iconOnly)
+                .font(.title3)
+                .menuStyle(.button)
+                .buttonStyle(.glass)
+                .fixedSize()
+
                 Button {
                     showStats.toggle()
                 } label: {
