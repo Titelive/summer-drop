@@ -45,6 +45,9 @@ struct SummerDropApp: App {
         }
         .defaultSize(width: 1180, height: 760)
         .windowResizability(.contentMinSize)
+        // No opaque title bar: the summer gradient runs up to the top edge, behind the window buttons.
+        // The header already shows the app's name.
+        .windowStyle(.hiddenTitleBar)
 
         Settings {
             SettingsView(model: model, updater: updater)
