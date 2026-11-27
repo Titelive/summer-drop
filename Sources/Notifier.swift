@@ -99,7 +99,7 @@ enum SettingsTab: Hashable {
 final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     static let shared = Notifier()
     /// The single switch of earlier versions, still read as the default of each kind.
-    static let legacyEnabledKey = "notificationsEnabled"
+    nonisolated static let legacyEnabledKey = "notificationsEnabled"
     private static let lastUpdateVersionKey = "notify.update.lastVersion"
 
     private enum Category {
