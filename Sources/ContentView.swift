@@ -7,7 +7,10 @@ struct ContentView: View {
     let model: AppModel
     let updater: Updater
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
     @AppStorage(AppLanguage.storageKey) private var languageSetting = AppLanguage.systemValue
+    private let router = AppRouter.shared
 
     var body: some View {
         ZStack {
@@ -60,6 +63,25 @@ struct ContentView: View {
             set: { model.showOnboarding = $0 }
         )) {
             OnboardingView(model: model)
+        }
+        .onChange(of: router.pending) { _, destination in
+            guard let destination else { return }
+            router.pending = nil
+            route(destination)
+        }
+    }
+
+    /// Opens the screen a clicked notification is about.
+    private func route(_ destination: AppRouter.Destination) {
+        switch destination {
+        case .transfers:
+            openWindow(id: "main")
+            router.highlightTransfers += 1
+        case .cartridge:
+            openWindow(id: "main")
+        case .updateSettings:
+            router.settingsTab = .updates
+            openSettings()
         }
     }
 }
@@ -466,6 +488,7 @@ struct DropZone: View {
 
 struct UploadQueueView: View {
     let model: AppModel
+    @State private var flash = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -530,6 +553,17 @@ struct UploadQueueView: View {
         .padding(18)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .glassEffect(.regular, in: .rect(cornerRadius: 24))
+        // Brief outline when the user arrives from a "transfers finished" notification.
+        .overlay(
+            RoundedRectangle(cornerRadius: 24)
+                .strokeBorder(Color.yellow, lineWidth: 2)
+                .opacity(flash ? 1 : 0)
+                .allowsHitTesting(false)
+        )
+        .onChange(of: AppRouter.shared.highlightTransfers) { _, _ in
+            flash = true
+            withAnimation(.easeOut(duration: 1.2).delay(0.4)) { flash = false }
+        }
     }
 }
 

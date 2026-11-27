@@ -20,16 +20,64 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
         }
     }
 
+    var systemImage: String {
+        switch self {
+        case .system: return "circle.lefthalf.filled"
+        case .light: return "sun.max"
+        case .dark: return "moon"
+        }
+    }
+
     static var current: AppearanceMode {
         AppearanceMode(rawValue: UserDefaults.standard.string(forKey: storageKey) ?? "") ?? .system
     }
 
+    /// `nil` in Automatic mode: AppKit then follows the Mac live, with no restart.
+    var nsAppearance: NSAppearance? {
+        switch self {
+        case .system: return nil
+        case .light: return NSAppearance(named: .aqua)
+        case .dark: return NSAppearance(named: .darkAqua)
+        }
+    }
+
     @MainActor
     func apply() {
-        switch self {
-        case .system: NSApp.appearance = nil
-        case .light: NSApp.appearance = NSAppearance(named: .aqua)
-        case .dark: NSApp.appearance = NSAppearance(named: .darkAqua)
+        NSApp.appearance = nsAppearance
+    }
+}
+
+/// Cross-fades every window when the app's look changes, whether the user picked a theme
+/// or macOS switched between light and dark on its own (Automatic mode).
+@MainActor
+final class AppearanceTransition {
+    static let shared = AppearanceTransition()
+
+    private var observation: NSKeyValueObservation?
+    private var lastName: NSAppearance.Name?
+
+    func start() {
+        lastName = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua])
+        // Fired before the windows redraw, so the fade starts from what is on screen.
+        observation = NSApp.observe(\.effectiveAppearance, options: [.new]) { app, _ in
+            MainActor.assumeIsolated {
+                let name = app.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua])
+                guard name != AppearanceTransition.shared.lastName else { return }
+                AppearanceTransition.shared.lastName = name
+                AppearanceTransition.shared.fadeWindows()
+            }
+        }
+    }
+
+    private func fadeWindows() {
+        let duration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0.15 : 0.35
+        for window in NSApp.windows where window.isVisible {
+            guard let layer = window.contentView?.superview?.layer ?? window.contentView?.layer else { continue }
+            let fade = CATransition()
+            fade.type = .fade
+            fade.duration = duration
+            fade.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            layer.add(fade, forKey: "appearanceFade")
         }
     }
 }
@@ -37,23 +85,28 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
 struct SettingsView: View {
     let model: AppModel
     let updater: Updater
+    @Bindable private var router = AppRouter.shared
     @AppStorage(AppLanguage.storageKey) private var languageSetting = AppLanguage.systemValue
 
     var body: some View {
-        TabView {
-            Tab(L("General"), systemImage: "gearshape") {
+        TabView(selection: $router.settingsTab) {
+            Tab(L("General"), systemImage: "gearshape", value: SettingsTab.general) {
                 GeneralSettings(model: model)
                     .frame(width: 560, height: 460)
             }
-            Tab(L("Cartridge"), systemImage: "sdcard") {
+            Tab(L("Notifications"), systemImage: "bell.badge", value: SettingsTab.notifications) {
+                NotificationSettings()
+                    .frame(width: 560, height: 400)
+            }
+            Tab(L("Cartridge"), systemImage: "sdcard", value: SettingsTab.cartridge) {
                 CartridgeSettings(model: model)
                     .frame(width: 560, height: 380)
             }
-            Tab(L("Updates"), systemImage: "arrow.triangle.2.circlepath") {
+            Tab(L("Updates"), systemImage: "arrow.triangle.2.circlepath", value: SettingsTab.updates) {
                 UpdateSettings(updater: updater)
                     .frame(width: 560, height: 380)
             }
-            Tab(L("Credits"), systemImage: "heart") {
+            Tab(L("Credits"), systemImage: "heart", value: SettingsTab.credits) {
                 // Hauteur naturelle : la fenêtre s'adapte, rien ne passe sous la barre d'onglets.
                 AboutView(updater: updater)
                     .frame(width: 560)
@@ -73,7 +126,6 @@ struct GeneralSettings: View {
     @AppStorage("lastDownloadFolder") private var downloadFolder = ""
     @State private var showFolderPicker = false
     @AppStorage("gameCardsEnabled") private var cardsEnabled = true
-    @AppStorage(Notifier.enabledKey) private var notificationsEnabled = true
 
     var body: some View {
         Form {
@@ -87,20 +139,13 @@ struct GeneralSettings: View {
             Section(L("Appearance")) {
                 Picker(L("Theme"), selection: $appearance) {
                     ForEach(AppearanceMode.allCases) { mode in
-                        Text(mode.label).tag(mode)
+                        Label(mode.label, systemImage: mode.systemImage).tag(mode)
                     }
                 }
                 .pickerStyle(.segmented)
-                Text(L("“Automatic” follows the macOS setting."))
+                Text(L("“Automatic” follows the macOS setting and switches with it, even while the app is open."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-            }
-
-            Section("Notifications") {
-                Toggle(L("Notify me when transfers finish, when the cartridge is plugged in and when an update is ready"), isOn: $notificationsEnabled)
-                    .onChange(of: notificationsEnabled) { _, enabled in
-                        if enabled { Notifier.shared.requestAuthorization() }
-                    }
             }
 
             Section(L("Game cards")) {
@@ -168,6 +213,85 @@ struct GeneralSettings: View {
     private var folderLabel: String {
         if !downloadFolder.isEmpty { return downloadFolder }
         return model.suggestedDownloadFolder?.path ?? L("Downloads")
+    }
+}
+
+// MARK: - Notifications
+
+struct NotificationSettings: View {
+    private let notifier = Notifier.shared
+
+    var body: some View {
+        Form {
+            Section {
+                ForEach(NotificationKind.allCases) { kind in
+                    NotificationKindToggle(kind: kind)
+                }
+            } header: {
+                Text(L("Notify me when…"))
+            } footer: {
+                Text(L("Notifications follow Focus: transfers use standard banners, the others arrive silently in Notification Center."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section(L("Permission")) {
+                switch notifier.authorization {
+                case .notDetermined:
+                    HStack {
+                        Text(L("Summer Drop will ask for permission the first time you send or retrieve a file."))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button(L("Allow Now")) { notifier.requestAuthorizationIfNeeded() }
+                    }
+                case .denied:
+                    HStack {
+                        Label(L("Notifications are turned off for Summer Drop in System Settings."), systemImage: "bell.slash")
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button(L("Open System Settings")) { notifier.openSystemSettings() }
+                    }
+                default:
+                    HStack {
+                        Label(L("Allowed. Banner style and sounds are set in System Settings."), systemImage: "checkmark.circle")
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button(L("Open System Settings")) { notifier.openSystemSettings() }
+                    }
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .task { await notifier.refreshAuthorization() }
+    }
+}
+
+private struct NotificationKindToggle: View {
+    let kind: NotificationKind
+    @State private var isOn: Bool
+
+    init(kind: NotificationKind) {
+        self.kind = kind
+        _isOn = State(initialValue: kind.isEnabled)
+    }
+
+    var body: some View {
+        Toggle(isOn: $isOn) {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(kind.label)
+                    Text(kind.detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } icon: {
+                Image(systemName: kind.systemImage)
+            }
+        }
+        .onChange(of: isOn) { _, enabled in
+            UserDefaults.standard.set(enabled, forKey: kind.defaultsKey)
+            if enabled { Notifier.shared.requestAuthorizationIfNeeded() }
+        }
     }
 }
 

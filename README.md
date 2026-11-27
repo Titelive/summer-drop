@@ -23,11 +23,11 @@ A native Mac app (SwiftUI, macOS 26 Liquid Glass) to send N64 ROMs to the SD car
 - **Keyboard**: click a pane, then **⌘A** select all, **⌘C** copy, **⌘X** move (always confirmed; Mac files go to the Trash), **⌘V** paste into the other pane. **⌘K** search.
 - **Game cards** on hover: box art, title screen, screenshot, year, developer, publisher, genres, Wikipedia summary, region, languages, size and format. When a ROM name is unusual, alternate titles from Wikidata are used, then Apple's on-device model as a last resort (no API key, nothing leaves the Mac).
 - **Your own star ratings** (1 to 5), stored on the Mac.
-- **Progress** per file and overall, **notifications** when transfers finish, when the cartridge is plugged or unplugged, and when an update is ready.
+- **Progress** per file and overall, **notifications** when transfers finish, when the cartridge is plugged or unplugged, and when an update is ready. Each kind has its own switch; they only show while the app is in the background, respect Focus, and a click opens the right screen. Permission is asked at the first transfer, not at launch.
 - **Statistics**: ROMs sent and retrieved, volumes, average speeds.
 - **8 languages**: English, Français, Español, Deutsch, Italiano, Português, 日本語, 简体中文. Follows your Mac, or pick one in the tutorial or in Settings; it switches instantly.
 - **Sort and group** each pane (↑↓ button): by name, size, date, rating or region; groups by first letter, region, rating or format.
-- **Settings** (⌘,): language, Automatic / Light / Dark theme, download folder, `sc64deployer` location, notifications, game cards, updates.
+- **Settings** (⌘,): language, Automatic / Light / Dark theme (Automatic follows macOS live, with a cross-fade), download folder, `sc64deployer` location, notifications, game cards, updates.
 - **Welcome tutorial** on first launch, starting with the language choice (arrow keys to navigate, ⌘↩ to finish), available again from the Help menu.
 - **Automatic updates** from GitHub Releases.
 - Never overwrites a file on the Mac. Refuses to touch the SD card while the console is on.

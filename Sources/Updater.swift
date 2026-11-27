@@ -115,7 +115,7 @@ final class Updater {
             stagedAppURL = staged
             installOnQuit = true
             phase = .ready(latest)
-            Notifier.shared.post(title: L("Update ready"), body: L("Summer Drop {0} is ready: restart the app to install it.", "\(latest)"))
+            Notifier.shared.notifyUpdate(version: latest, title: L("Update ready"), body: L("Summer Drop {0} is ready: restart the app to install it.", "\(latest)"))
         } catch {
             phase = userInitiated ? .failed(error.localizedDescription) : .idle
         }

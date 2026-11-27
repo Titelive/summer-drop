@@ -23,11 +23,11 @@ App Mac native (SwiftUI, Liquid Glass de macOS 26) pour envoyer des ROM N64 sur 
 - **Clavier** : cliquez sur un panneau, puis **⌘A** tout sélectionner, **⌘C** copier, **⌘X** déplacer (toujours confirmé ; les fichiers du Mac vont à la corbeille), **⌘V** coller dans l'autre panneau. **⌘K** pour rechercher.
 - **Fiches de jeu** au survol : jaquette, écran-titre, capture, année, développeur, éditeur, genres, résumé Wikipédia, région, langues, taille et format. Pour les noms de ROM inhabituels : titres alternatifs de Wikidata, puis l'IA d'Apple sur l'appareil en dernier recours (sans clé, rien ne quitte le Mac).
 - **Vos étoiles** (1 à 5), gardées sur le Mac.
-- **Progression** par fichier et totale, **notifications** à la fin des transferts, au branchement de la cartouche et quand une mise à jour est prête.
+- **Progression** par fichier et totale, **notifications** à la fin des transferts, au branchement de la cartouche et quand une mise à jour est prête. Chaque type a son interrupteur ; elles n'apparaissent que quand l'app est en arrière-plan, respectent le mode Concentration, et un clic ouvre le bon écran. L'autorisation est demandée au premier transfert, pas au lancement.
 - **Statistiques** : ROM envoyées et récupérées, volumes, vitesses moyennes.
 - **8 langues** : English, Français, Español, Deutsch, Italiano, Português, 日本語, 简体中文. Suit la langue du Mac, ou se choisit dans le tutoriel ou les Réglages ; le changement est immédiat.
 - **Tri et groupes** dans chaque panneau (bouton ↑↓) : par nom, taille, date, note ou région ; groupes par première lettre, région, note ou format.
-- **Réglages** (⌘,) : langue, thème Automatique / Clair / Sombre, dossier de téléchargement, emplacement de `sc64deployer`, notifications, fiches de jeu, mises à jour.
+- **Réglages** (⌘,) : langue, thème Automatique / Clair / Sombre (Automatique suit macOS en direct, avec un fondu), dossier de téléchargement, emplacement de `sc64deployer`, notifications, fiches de jeu, mises à jour.
 - **Tutoriel** au premier lancement, qui commence par le choix de la langue (flèches pour naviguer, ⌘↩ pour terminer), rejouable depuis le menu Aide.
 - **Mises à jour automatiques** depuis les versions GitHub.
 - N'écrase jamais un fichier du Mac. Refuse d'accéder à la carte quand la console est allumée.

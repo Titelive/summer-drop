@@ -158,7 +158,7 @@ final class AppModel {
         if result.succeeded, let first = devices.first {
             connection = .connected(first)
             if wasDisconnected {
-                Notifier.shared.post(title: L("SummerCart64 connected"), body: L("Cartridge {0} is ready.", "\(first.serial)"), sound: false)
+                Notifier.shared.notifyCartridge(title: L("SummerCart64 connected"), body: L("Cartridge {0} is ready.", "\(first.serial)"))
             }
             if !wasConnected {
                 currentPath = "/"
@@ -167,7 +167,7 @@ final class AppModel {
         } else {
             connection = .disconnected
             if wasConnected {
-                Notifier.shared.post(title: L("SummerCart64 unplugged"), body: L("The cartridge is no longer detected."), sound: false)
+                Notifier.shared.notifyCartridge(title: L("SummerCart64 unplugged"), body: L("The cartridge is no longer detected."))
                 entries = []
                 listError = nil
             }
@@ -296,6 +296,8 @@ final class AppModel {
 
     private func startQueueIfNeeded() {
         if !isUploading {
+            // The first transfer is the right moment to offer "tell me when it's done".
+            Notifier.shared.requestAuthorizationIfNeeded()
             isUploading = true
             Task { await processQueue() }
         }
@@ -618,9 +620,11 @@ final class AppModel {
         if sent > 0 { parts.append(L("{0} ROM{1} sent to the card", "\(sent)", "\(sent > 1 ? "s" : "")")) }
         if received > 0 { parts.append(L("{0} file{1} retrieved to the Mac", "\(received)", "\(received > 1 ? "s" : "")")) }
         if failed > 0 { parts.append(L("{0} failure{1}", "\(failed)", "\(failed > 1 ? "s" : "")")) }
-        Notifier.shared.post(
+        Notifier.shared.notifyTransfers(
             title: failed > 0 ? L("Transfers finished with errors") : L("Transfers finished"),
-            body: parts.joined(separator: ", ") + "."
+            body: parts.joined(separator: ", ") + ".",
+            failed: failed > 0,
+            hasDownloads: received > 0
         )
     }
 

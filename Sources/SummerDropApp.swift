@@ -2,10 +2,18 @@ import AppKit
 import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        MainActor.assumeIsolated {
+            // Before the first window appears: no flash of the wrong theme.
+            AppearanceMode.current.apply()
+            // The delegate must be set before launch ends to receive a click that launched the app.
+            Notifier.shared.setup()
+        }
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         MainActor.assumeIsolated {
-            AppearanceMode.current.apply()
-            Notifier.shared.setup()
+            AppearanceTransition.shared.start()
         }
     }
 
@@ -30,12 +38,16 @@ struct SummerDropApp: App {
             ContentView(model: model, updater: updater)
                 .frame(minWidth: 1000, minHeight: 640)
                 .task {
+                    Notifier.shared.revealDownloads = { model.revealDownloads() }
                     model.start()
                     updater.startAutomaticChecks()
                 }
         }
         .defaultSize(width: 1180, height: 760)
         .windowResizability(.contentMinSize)
+        // No opaque title bar: the summer gradient runs up to the top edge, behind the window buttons.
+        // The header already shows the app's name.
+        .windowStyle(.hiddenTitleBar)
 
         Settings {
             SettingsView(model: model, updater: updater)
