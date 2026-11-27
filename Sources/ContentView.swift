@@ -34,8 +34,9 @@ struct ContentView: View {
 
                 // Signature Titelive en bas à gauche (la barre complète reste dans « À propos »)
                 HStack {
-                    TiteliveSignature(appName: "Summer Drop", showsCoffee: true)
-                        .fixedSize()
+                    TiteliveSignatureCard(appName: "Summer Drop",
+                                          appSite: URL(string: "https://github.com/Titelive/summer-drop"))
+                        .frame(width: 240)
                     Spacer()
                 }
             }
